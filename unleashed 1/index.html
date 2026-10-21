@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unleashed</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Unleashed: free music for every DJ, and a place for artists to find collaborators. A BONHOMME platform. In service of art.">
+<style>
+@font-face{font-family:"Archivo Black";src:url(fonts/ArchivoBlack-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Archivo";src:url(fonts/Archivo-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Archivo";src:url(fonts/Archivo-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url(fonts/IBMPlexMono-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url(fonts/IBMPlexMono-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
+/* Layout: the BONHOMME identity applied: a heavy wordmark over a crate of records, profile cards, a pinboard of collab calls */
+:root{
+  --bg:#F2F0E9; --card:#FBFAF6; --ink:#242323; --dim:#4D4B48; --line:#D9D6CC;
+  --tq:#00B8C7; --tq-text:#007680; --yellow:#FFE800; --on:#242323;
+  --display:"Archivo Black","Arial Black",sans-serif;
+  --body:"Archivo",Arial,sans-serif;
+  --mono:"IBM Plex Mono","Courier New",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#242323;--card:#2E2D2C;--ink:#F2F0E9;--dim:#B8B4AA;--line:#403E3C;--tq-text:#00B8C7;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#242323;--card:#2E2D2C;--ink:#F2F0E9;--dim:#B8B4AA;--line:#403E3C;--tq-text:#00B8C7;color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 56px}
+img{max-width:100%}
+[hidden]{display:none!important}
+a{color:inherit}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:26px}
+.wrap>*,main{min-width:0}
+header{display:grid;gap:14px}
+.mast{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.word{font-family:var(--display);font-weight:400;font-size:clamp(44px,12.5vw,132px);line-height:.86;letter-spacing:-.035em;text-transform:uppercase;margin:0}
+.word span{background:var(--yellow);color:var(--on);padding:0 .03em;box-decoration-break:clone}
+.tag{font-family:var(--mono);font-size:12px;color:var(--dim);max-width:44ch;margin:6px 0 0}
+.support{font:700 13px var(--mono);letter-spacing:.08em;text-transform:uppercase;background:var(--tq);color:var(--on);border:0;padding:12px 16px;border-radius:2px;cursor:pointer;text-decoration:none;display:inline-block}
+nav{display:flex;gap:2px;border-top:3px solid var(--ink);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+nav a{font:700 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:11px 12px;text-decoration:none;color:var(--dim);white-space:nowrap}
+nav a[aria-current="page"]{color:var(--ink);background:var(--card);box-shadow:inset 0 -4px 0 var(--tq)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--tq-text);outline-offset:2px}
+h2.h{font-family:var(--display);font-weight:400;font-size:clamp(32px,7vw,52px);line-height:.95;letter-spacing:-.01em;text-transform:uppercase;margin:0;text-wrap:balance}
+h3.crate{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;margin:0;color:var(--dim);display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.lead{margin:0;max-width:62ch}
+.intro{margin:0 0 24px;max-width:58ch;font-size:clamp(17px,2.2vw,21px);line-height:1.5;border-left:4px solid var(--yellow);padding-left:16px}
+.note{margin:0;font-size:13px;color:var(--dim);max-width:62ch}
+.stack{display:grid;gap:14px;align-content:start}
+.list{display:grid}
+.rel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}
+.rel .t{font-weight:600;font-size:16px;min-width:0;overflow-wrap:anywhere}
+.rel .m{font:400 12px var(--mono);color:var(--dim);display:flex;flex-wrap:wrap;gap:4px 12px;font-variant-numeric:tabular-nums}
+.rel .acts{display:flex;gap:6px;grid-row:span 2;align-self:center;flex-wrap:wrap;justify-content:flex-end}
+.rel .slot{grid-column:1/-1}
+.btn{font:700 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:8px 11px;border-radius:2px;cursor:pointer;text-decoration:none;white-space:nowrap;display:inline-block}
+.btn.solid{background:var(--ink);color:var(--bg)}
+.btn.uv{background:var(--tq);border-color:var(--tq);color:var(--on)}
+.btn.ghost{border-color:var(--line);color:var(--dim);cursor:default}
+.plat{font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--dim);padding:1px 5px;border-radius:2px}
+.type{color:var(--tq-text);font-weight:700}
+.slot iframe{width:100%;border:0;display:block;margin-top:8px;background:var(--card)}
+.slot .yt{aspect-ratio:16/9;height:auto;max-width:100%}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:26px}
+.cols>*{min-width:0}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{font:700 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+input[type=search]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:2px;min-width:0;flex:1 1 200px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px}
+.hero{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:22px;align-items:center}
+.hero.tinted{background:var(--ac);color:#242323;padding:18px;border-radius:0}
+.hero.tinted .k,.hero.tinted .note,.hero.tinted .hero-meta{color:#242323}
+.hero.tinted .role{background:#242323;color:var(--ac)}
+.hero.tinted .btn{border-color:#242323;color:#242323}
+.hero.tinted .open{color:#242323}.hero.tinted .open::before{background:#242323}
+.hero-txt{display:grid;gap:10px;min-width:0}
+.hero-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--dim);align-items:center}
+.portrait{width:100%;height:auto;aspect-ratio:1;display:block;border-radius:0;object-fit:cover}
+.wmark{display:block;width:100%;max-width:520px;height:auto}
+.hero.tinted .wmark{filter:none}
+.by{display:flex;align-items:center;gap:10px;font:700 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-top:10px}
+.by img{height:18px;width:auto}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .by img{filter:invert(1) brightness(1.1)}}
+:root[data-theme="dark"] .by img{filter:invert(1) brightness(1.1)}
+@media (max-width:620px){.hero{grid-template-columns:1fr}.portrait{max-width:240px}}
+.thumb{width:64px;height:64px;border-radius:50%;object-fit:cover}
+.mood{border-bottom:2px solid var(--yellow)}
+.journey{margin:0;padding:0;list-style:none;display:grid;gap:10px;border-left:2px solid var(--ink);padding-left:14px}
+.journey li{display:grid;gap:2px;position:relative}
+.journey li::before{content:"";position:absolute;left:-20px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--tq)}
+.give{display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:3px;padding:14px;margin-top:8px}
+.give input{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:2px;width:100%;margin-top:4px}
+.give .chip[aria-checked="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:16px;display:grid;gap:10px;align-content:start;min-width:0}
+.card h4{font-family:var(--display);font-weight:400;font-size:26px;line-height:1;letter-spacing:-.01em;margin:0;text-transform:uppercase;overflow-wrap:anywhere}
+.card h4 a{text-decoration:none}
+.card h4 a:hover{text-decoration:underline;text-decoration-color:var(--tq)}
+.roles{display:flex;flex-wrap:wrap;gap:5px}
+.role{font:700 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;background:var(--bg);border-radius:2px}
+.open{font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);display:inline-flex;align-items:center;gap:5px}
+.open::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 1.5px var(--ink)}
+.k{font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.links{display:flex;flex-wrap:wrap;gap:6px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:14px;counter-reset:s}
+.step{border-top:3px solid var(--ink);padding-top:10px;display:grid;gap:8px;align-content:start}
+.step b{font-family:var(--display);font-weight:400;font-size:24px;text-transform:uppercase;line-height:1}
+.step b::before{counter-increment:s;content:counter(s) " ";color:var(--tq-text)}
+.empty{padding:22px;border:1.5px dashed var(--line);border-radius:3px;color:var(--dim);text-align:center}
+.back{font:700 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--dim);text-decoration:none}
+footer{font:400 12px var(--mono);color:var(--dim);border-top:1px solid var(--line);padding-top:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:2px;font-size:13px;max-width:calc(100% - 32px);z-index:5}
+@media (max-width:520px){.rel{grid-template-columns:1fr}.rel .acts{grid-row:auto;justify-content:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mast">
+      <div>
+        <h1 class="word">Unleash<span>ed</span></h1>
+        <p class="tag" id="tagline">Free music for every DJ. Contribute if you want. Collaborate with everyone.</p>
+        <div class="by"><img src="img/bonhomme-bh.svg" alt="BH" class="bh">A BONHOMME platform · In service of art.</div>
+      </div>
+      <a class="support" id="support" href="#join">Contribute</a>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#channel">Channel</a>
+      <a href="#library">Library</a>
+      <a href="#artists">Artists</a>
+      <a href="#collab">Collab board</a>
+      <a href="#join">Join</a>
+    </nav>
+  </header>
+  <main id="view" aria-live="polite"><p class="note">Loading the crate…</p></main>
+  <footer><span>Unleashed · a BONHOMME platform</span><span>In service of art.</span></footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const S={site:{},releases:[],artists:[],collabs:[],playlists:[]};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
+const V=document.getElementById('view');
+let typeF='All',roleF='All',q='',plF='All',give=null;
+
+async function load(){
+  const get=async(f,d)=>{try{const r=await fetch('data/'+f+'.json',{cache:'no-store'});if(!r.ok)throw 0;return await r.json()}catch(e){return d}};
+  [S.site,S.releases,S.artists,S.collabs,S.playlists]=await Promise.all([get('site',{}),get('releases',[]),get('artists',[]),get('collabs',[]),get('playlists',[])]);
+  S.releases.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(S.site.tagline)document.getElementById('tagline').textContent=S.site.tagline;
+  const sup=document.getElementById('support');
+  if(safeUrl(S.site.support_url)){sup.href=S.site.support_url;sup.target='_blank';sup.rel='noopener'}
+  else sup.onclick=e=>{e.preventDefault();toast(S.site.support_note||'A contribution link is coming soon.')};
+  route();
+}
+
+// ---- helpers
+const artist=slug=>S.artists.find(a=>a.slug===slug);
+const artistName=s=>{const a=artist(s);return a?a.name:s};
+const credits=r=>(r.artists||[]).map(s=>artist(s)?`<a href="#artist-${esc(s)}">${esc(artistName(s))}</a>`:esc(s)).join(' × ');
+function platform(u){u=u||'';if(/soundcloud\.com/i.test(u))return'SoundCloud';if(/mixcloud\.com/i.test(u))return'Mixcloud';if(/youtu\.?be/i.test(u))return'YouTube';if(/bandcamp\.com/i.test(u))return'Bandcamp';return'Link'}
+function embed(u){
+  const p=platform(u);
+  if(p==='SoundCloud')return`<iframe height="166" allow="autoplay" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(u)}&color=%232a33ff&auto_play=true&visual=false" title="SoundCloud player"></iframe>`;
+  if(p==='Mixcloud'){const path=new URL(u).pathname;return`<iframe height="120" allow="autoplay" src="https://www.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(path)}&autoplay=1&hide_cover=1" title="Mixcloud player"></iframe>`}
+  if(p==='YouTube'){const m=u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/);if(m)return`<iframe class="yt" allow="autoplay; encrypted-media" allowfullscreen src="https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1" title="YouTube player"></iframe>`}
+  return'';
+}
+function relRow(r,showArtist=true){
+  const u=safeUrl(r.url),dl=safeUrl(r.download),p=platform(u),can=u&&embed(u);
+  const meta=[`<span class="type">${esc(r.type)}</span>`,showArtist?`<span>${credits(r)}</span>`:'',r.alias?`<span>as ${esc(r.alias)}</span>`:'',r.bpm?`<span>${esc(r.bpm)} bpm</span>`:'',r.length?`<span>${esc(r.length)}</span>`:'',r.genre?`<span>${esc(r.genre)}</span>`:'',r.mood?`<span class="mood">${esc(r.mood)}</span>`:'',r.place?`<span>made in ${esc(r.place)}</span>`:'',r.date?`<span>${esc(r.date)}</span>`:'',u?`<span class="plat">${p}</span>`:''].filter(Boolean).join('');
+  return`<div class="rel" id="r-${esc(r.id)}"><div class="t">${esc(r.title)}</div><div class="acts">
+    ${can?`<button class="btn solid" data-play="${esc(r.id)}">Play</button>`:''}
+    ${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">Open</a>`:''}
+    ${dl?`<button class="btn uv" data-give="${esc(r.id)}">Download</button>`:`<span class="btn ghost" title="${r.original_lost?'The original file is gone':'Download link not added yet'}">Stream only</span>`}
+  </div><div class="m">${meta}</div><div class="slot"></div></div>`;
+}
+function wirePlay(){V.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>{
+  const r=S.releases.find(x=>x.id===b.dataset.play),slot=b.closest('.rel').querySelector('.slot');
+  V.querySelectorAll('.slot').forEach(s=>{if(s!==slot)s.innerHTML=''});
+  V.querySelectorAll('[data-play]').forEach(x=>x.textContent='Play');
+  if(slot.innerHTML){slot.innerHTML='';return}
+  slot.innerHTML=embed(r.url);b.textContent='Close';
+})}
+const repo=()=>S.site.repo||'theoriginalbonhomme/theoriginalbonhomme.github.io';
+const form=t=>`https://github.com/${repo()}/issues/new?template=${t}.yml`;
+
+// ---- views
+const views={
+ channel(){
+  const me=artist('bonhomme')||S.artists[0];
+  const intro=S.site.intro?`<p class="intro">${esc(S.site.intro)}</p>`:'';
+  return me?intro+profile(me,true):'<div class="empty">No profile yet.</div>'},
+ library(){
+  const types=['All',...new Set(S.releases.map(r=>r.type))];
+  const ql=q.toLowerCase();
+  const list=S.releases.filter(r=>(typeF==='All'||r.type===typeF)&&(!ql||[r.title,r.genre,r.bpm,r.alias,r.mood,r.place,...(r.artists||[]).map(artistName)].join(' ').toLowerCase().includes(ql)));
+  return`<div class="stack"><h2 class="h">Library</h2><p class="note">Every track and set on Unleashed, newest first. Free for any DJ to play. Download where a file is shared; otherwise stream it from the original platform.</p>
+   <div class="tools"><input type="search" id="q" placeholder="Search title, artist, mood, place or bpm" value="${esc(q)}" aria-label="Search the library">${types.map(t=>`<button class="chip" data-t="${esc(t)}" aria-pressed="${t===typeF}">${esc(t)}</button>`).join('')}</div>
+   <div class="list">${list.map(r=>relRow(r)).join('')||'<div class="empty">Nothing matches. Try another search.</div>'}</div></div>`},
+ artists(){
+  const roles=['All',...new Set(S.artists.flatMap(a=>a.roles||[]))];
+  const list=S.artists.filter(a=>roleF==='All'||(a.roles||[]).includes(roleF));
+  return`<div class="stack"><h2 class="h">Artists</h2><p class="note">Everyone here has been approved and is open to collaborate. Filter by what you need.</p>
+   <div class="tools">${roles.map(r=>`<button class="chip" data-r="${esc(r)}" aria-pressed="${r===roleF}">${esc(r)}</button>`).join('')}</div>
+   <div class="cards">${list.map(card).join('')||'<div class="empty">No artists with that role yet.</div>'}</div>
+   <p class="note">Want to be on this wall? <a href="#join">Apply to join</a>.</p></div>`},
+ collab(){
+  return`<div class="stack"><div class="mast" style="align-items:center"><h2 class="h">Collab board</h2><a class="btn uv" href="${form('collab')}" target="_blank" rel="noopener">Post a call</a></div>
+   <p class="note">Open calls from Unleashed artists. Reach out through the artist's profile.</p>
+   <div class="cards">${S.collabs.map(c=>`<article class="card"><span class="k">${esc(c.status||'Open')} · ${esc(c.date||'')}</span><h4>${esc(c.title)}</h4>
+    <div><span class="k">From</span><br>${artist(c.by)?`<a href="#artist-${esc(c.by)}">${esc(artistName(c.by))}</a>`:esc(c.by)}</div>
+    <div><span class="k">Has</span><br>${esc(c.have)}</div>
+    <div><span class="k">Needs</span><div class="roles" style="margin-top:4px">${(c.need||[]).map(n=>`<span class="role">${esc(n)}</span>`).join('')}</div></div>
+    ${safeUrl(c.link)?`<div><a class="btn" href="${esc(c.link)}" target="_blank" rel="noopener">Hear the sketch</a></div>`:''}</article>`).join('')||'<div class="empty">No open calls yet. Post the first one.</div>'}</div></div>`},
+ join(){
+  return`<div class="stack" style="gap:22px"><h2 class="h">Join Unleashed</h2>
+   <p class="lead">Unleashed is a low-key place for musicians to find each other and make things together. Everything is free to play and download. Listeners can contribute if they want.</p>
+   <div class="steps">
+    <div class="step"><b>Apply</b><span>Fill in a short profile: what you do, where you are, who you want to work with.</span><a class="btn uv" href="${form('join')}" target="_blank" rel="noopener">Apply to join</a></div>
+    <div class="step"><b>Get approved</b><span>Bonhomme reviews every profile. Once approved, you appear on the artists wall.</span></div>
+    <div class="step"><b>Make things</b><span>Add your tracks and sets, and post collab calls for the people you need.</span><span class="links"><a class="btn" href="${form('release')}" target="_blank" rel="noopener">Add music</a><a class="btn" href="${form('collab')}" target="_blank" rel="noopener">Post a call</a></span></div>
+   </div>
+   <p class="note">Forms open on GitHub, which needs a free account.</p>
+   <section class="stack"><h3 class="crate"><span>Contribute</span><span>optional</span></h3><p class="note">${safeUrl(S.site.support_url)?`<a class="btn uv" href="${esc(S.site.support_url)}" target="_blank" rel="noopener">Contribute</a>`:esc(S.site.support_note||'A contribution link is coming soon.')}</p></section></div>`},
+ artist(slug){
+  const a=artist(slug);if(!a)return`<div class="empty">That profile is not live yet. <a href="#artists">See all artists</a>.</div>`;
+  return profile(a,false)}
+};
+function profile(a,home){
+  const slug=a.slug,rel=S.releases.filter(r=>(r.artists||[]).includes(slug)),calls=S.collabs.filter(c=>c.by===slug);
+  const pls=S.playlists.filter(p=>p.by===slug);
+  const pl=pls.find(p=>p.id===plF);
+  const shown=pl?pl.items.map(id=>S.releases.find(r=>r.id===id)).filter(Boolean):null;
+  const crate=(t,sub,arr,empty)=>`<section class="stack"><h3 class="crate"><span>${t}</span><span>${sub}</span></h3><div class="list">${arr.map(r=>relRow(r,false)).join('')||`<div class="empty">${empty}</div>`}</div></section>`;
+  let body;
+  if(shown){body=crate(esc(pl.title),'playlist · '+shown.length,shown,'Empty playlist.')}
+  else if(a.sections&&a.sections.length){
+    const solo=rel.filter(r=>(r.artists||[]).length===1&&!/collab/i.test(r.type)),collabs=rel.filter(r=>(r.artists||[]).length>1||/collab/i.test(r.type));
+    body=`<div class="cols">${a.sections.map(sec=>crate(esc(sec.role==='DJ'?'DJ sets':sec.role==='Producer'?'Productions':sec.role),esc(sec.alias),solo.filter(r=>(sec.types||[]).includes(r.type)),'Nothing here yet.')).join('')}</div>
+     ${crate('Collabs','with friends',collabs,'Collabs land here. <a href="#collab">See the collab board</a>.')}`}
+  else body=crate('Music',String(rel.length),rel,'No music added yet.');
+  const places={};rel.forEach(r=>{if(r.place)(places[r.place]=places[r.place]||[]).push(r)});
+  const ac=/^#[0-9a-f]{6}$/i.test(a.color||'')?a.color:'';
+  return`<div class="stack" style="gap:24px">${home?'':'<a class="back" href="#artists">← All artists</a>'}
+   <section class="hero${ac?' tinted':''}"${ac?` style="--ac:${ac}"`:''}>
+    ${a.photo?`<img class="portrait" src="${esc(a.photo)}" alt="Portrait of ${esc(a.name)}" width="640" height="640">`:''}
+    <div class="hero-txt"><div class="roles">${(a.roles||[]).map(r=>`<span class="role">${esc(r)}</span>`).join('')}</div>
+     ${a.wordmark?`<h2 class="h" style="margin:0"><img class="wmark" src="${esc(a.wordmark)}" alt="${esc(a.name)}"></h2>`:`<h2 class="h">${esc(a.name)}</h2>`}
+     ${a.meaning?`<span class="k">${esc(a.meaning)}</span>`:''}
+     ${a.aliases&&a.aliases.length?`<span class="k">Also known as ${a.aliases.map(esc).join(' · ')}</span>`:''}
+     ${String(a.bio||'').split(/\n\n+/).map(t=>`<p class="lead">${esc(t)}</p>`).join('')}
+     <div class="hero-meta">${a.based?`<span>${esc(a.based)}</span>`:''}${a.open_to_collab!==false?'<span class="open">Open to collab</span>':''}</div>
+     <div class="links">${(a.links||[]).map(l=>safeUrl(l)?`<a class="btn" href="${esc(l)}" target="_blank" rel="noopener">${platform(l)}</a>`:'').join('')}</div></div>
+   </section>
+   ${pls.length?`<div class="tools"><span class="k">Playlists</span><button class="chip" data-pl="All" aria-pressed="${!pl}">Everything</button>${pls.map(p=>`<button class="chip" data-pl="${esc(p.id)}" aria-pressed="${pl&&pl.id===p.id}">${esc(p.title)} · ${p.items.length}</button>`).join('')}</div>`:''}
+   ${body}
+   <div class="cols">
+    <section class="stack"><h3 class="crate"><span>Journey</span><span>${Object.keys(places).length} places</span></h3>
+     ${a.story?`<p class="lead">${esc(a.story)}</p>`:''}
+     <ol class="journey">${Object.entries(places).map(([pl,rs])=>`<li><b>${esc(pl)}</b><span class="note">${rs.map(r=>esc(r.title)).join(' · ')}</span></li>`).join('')||'<li class="note">Places appear as music is added.</li>'}</ol></section>
+    <section class="stack"><h3 class="crate"><span>Looking for</span><span>${calls.length} calls</span></h3><p class="lead">${esc(a.looking_for||'')}</p>
+     ${a.contact?`<p class="note">Reach out: <strong>${esc(a.contact)}</strong></p>`:''}
+     ${calls.map(c=>`<div><b>${esc(c.title)}</b><br><span class="note">Needs ${(c.need||[]).map(esc).join(', ')}</span></div>`).join('')}</section>
+   </div></div>`}
+function card(a){return`<article class="card">${a.photo?`<img class="thumb" src="${esc(a.photo)}" alt="" width="64" height="64">`:''}<div class="roles">${(a.roles||[]).map(r=>`<span class="role">${esc(r)}</span>`).join('')}</div>
+ <h4><a href="#artist-${esc(a.slug)}">${esc(a.name)}</a></h4>${a.based?`<span class="note">${esc(a.based)}</span>`:''}
+ <div><span class="k">Looking for</span><br>${esc(a.looking_for||'')}</div>${a.open_to_collab!==false?'<span class="open">Open to collab</span>':''}</article>`}
+
+function route(){
+  const h=(location.hash||'#channel').slice(1);
+  const [v,arg]=h.startsWith('artist-')?['artist',h.slice(7)]:[views[h]?h:'channel'];
+  document.querySelectorAll('nav a').forEach(a=>a.setAttribute('aria-current',a.getAttribute('href')==='#'+(v==='artist'?'artists':v)?'page':'false'));
+  V.innerHTML=views[v](arg);wire();
+}
+function wire(){
+  wirePlay();
+  V.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{typeF=b.dataset.t;route()});
+  V.querySelectorAll('[data-pl]').forEach(b=>b.onclick=()=>{plF=b.dataset.pl;route()});
+  V.querySelectorAll('[data-give]').forEach(b=>b.onclick=()=>openGive(b));
+  V.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{roleF=b.dataset.r;route()});
+  const qi=V.querySelector('#q');if(qi)qi.oninput=()=>{q=qi.value;const pos=qi.selectionStart;route();const n=V.querySelector('#q');n.focus();n.setSelectionRange(pos,pos)};
+}
+function openGive(b){
+  const r=S.releases.find(x=>x.id===b.dataset.give),slot=b.closest('.rel').querySelector('.slot');
+  if(slot.querySelector('.give')){slot.innerHTML='';return}
+  const sup=safeUrl(S.site.support_url);
+  slot.innerHTML=`<div class="give"><b>Take it, give something back</b><p class="note">Downloads cost no money, but everyone gives something. Pick one:</p>
+   <div class="tools" role="radiogroup" aria-label="Your contribution">${[['track','Your own track'],['photo','A photo'],['love','Much love'],['money','Money']].map(([k,l])=>`<button class="chip" role="radio" aria-checked="false" data-k="${k}">${l}</button>`).join('')}</div>
+   <div class="give-in"></div><div><a class="btn uv" hidden target="_blank" rel="noopener" href="${esc(r.download)}">Download ${esc(r.title)}</a></div></div>`;
+  const box=slot.querySelector('.give'),inp=box.querySelector('.give-in'),dl=box.querySelector('a.btn');
+  box.querySelectorAll('[data-k]').forEach(c=>c.onclick=()=>{
+    box.querySelectorAll('[data-k]').forEach(x=>{x.setAttribute('aria-checked',x===c);x.setAttribute('aria-pressed',x===c)});
+    const k=c.dataset.k;dl.hidden=true;
+    inp.innerHTML=k==='track'?`<label class="note" for="g-${r.id}">Link to your track</label><input id="g-${r.id}" type="url" placeholder="https://soundcloud.com/…">`
+     :k==='photo'?`<label class="note" for="g-${r.id}">Your photo</label><input id="g-${r.id}" type="file" accept="image/*">`
+     :k==='love'?`<label class="note" for="g-${r.id}">A message for the artist</label><input id="g-${r.id}" type="text" placeholder="Much love from…">`
+     :sup?`<a class="btn" href="${esc(sup)}" target="_blank" rel="noopener">Open the contribution page</a>`:`<p class="note">${esc(S.site.support_note||'A contribution link is coming soon.')} Pick another way for now.</p>`;
+    const f=inp.querySelector('input');
+    const ok=()=>{dl.hidden=!(f&&(f.files?f.files.length:f.value.trim().length>1))};
+    if(f){f.oninput=ok;f.onchange=ok}else if(sup){inp.querySelector('a').onclick=()=>{dl.hidden=false}}
+  });
+}
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2800)}
+addEventListener('hashchange',()=>{plF='All';route();scrollTo(0,0)});
+load();
+</script>
+</body>
+</html>
