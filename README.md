@@ -1,38 +1,36 @@
 # Unleashed
 
-Free music for every DJ, and a low-key place for musicians to find collaborators.
-Curated by theoriginalbonhomme. Lives at https://theoriginalbonhomme.github.io
+Unleashed is a free, invitation-led home and collaboration platform for artists. It is built with Vite and TypeScript, uses Supabase for Phase 1 member accounts, and is deployed to GitHub Pages.
 
-## Put it online (about 10 minutes, once)
+The existing visual identity and data-backed Channel, Library, Artists, Collab board, and Join pages remain in the root `data/*.json` files. The self-hosted Archivo and IBM Plex Mono fonts and BONHOMME marks live under `fonts/` and `img/`. Phase 2 will move the portfolio data into Supabase.
 
-1. On GitHub, create a new **public** repository named exactly `theoriginalbonhomme.github.io`.
-2. Upload everything in this folder, including the hidden `.github` folder (drag the whole folder into "Add file → Upload files", or use GitHub Desktop).
-3. Go to **Settings → Pages**. Under "Build and deployment", set Source to "Deploy from a branch", branch `main`, folder `/ (root)`. Save.
-4. Go to **Settings → Actions → General → Workflow permissions** and choose "Read and write permissions". Save.
-5. Go to **Issues → Labels** and create four labels: `artist`, `release`, `collab`, `approved`.
+## Local development
 
-The site is live at https://theoriginalbonhomme.github.io a minute or two later.
+1. Install Node.js 22 or newer, then run `npm ci`.
+2. Create a Supabase project and apply `supabase/migrations/20261021000000_phase1.sql`.
+3. Put `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in a local `.env` file.
+4. In Supabase Auth, enable email sign-in, set the Site URL to `https://theoriginalbonhomme.github.io/unleashed/`, and allow redirects to `https://theoriginalbonhomme.github.io/unleashed/**` and `http://localhost:5173/unleashed/**`.
+5. Run `npm run dev`. Run `npm run build` to type-check and create `dist/`.
 
-## How approval works
+Sign-in uses email magic links only. Invitees must use the address that received the single-use invitation. Each invitation expires after 14 days.
 
-- Artists apply with the **Join Unleashed** form (a GitHub issue). Releases and collab calls use the **Add music** and **Post a collab call** forms.
-- Each submission arrives in your **Issues** tab.
-- To approve: add the `approved` label. The site adds the profile, release or call, comments "Approved" and closes the issue.
-- To decline: close the issue without the label.
-- Only you (and people you add as collaborators) can add labels, so nothing goes live without you.
+## First Curator setup
 
-## Editing by hand
+After applying the migration, run the seed script with a Supabase service-role key and the Curator's email:
 
-All content lives in four files in `data/`:
+```sh
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY \
+BONHOMME_EMAIL=you@example.com \
+npm run seed
+```
 
-| File | What it holds |
-| --- | --- |
-| `site.json` | Name, tagline, and your contribution link (`support_url`) |
-| `artists.json` | Approved artist profiles |
-| `releases.json` | Tracks, DJ mixes, collabs and videos |
-| `collabs.json` | Open collab calls (set `status` to `Closed` when done) |
+The script reads the BONHOMME profile from `data/artists.json`, creates or reuses the Supabase Auth user, and marks the profile live and the user as admin. Never expose the service-role key in the browser or GitHub Pages build.
 
-To add a contribution link, paste your PayPal, Ko-fi or Buy Me a Coffee link into `support_url` in `site.json`.
-For a release where you still have the file, put a Google Drive or Dropbox link in `download`. Leave it empty and the release shows "Stream only".
+## GitHub Pages
 
-SoundCloud, Mixcloud and YouTube links play right on the site.
+The `Deploy to GitHub Pages` workflow builds and deploys on pushes to `main`. In repository settings, enable Pages with **GitHub Actions** as the build and deployment source. Add the repository variable `VITE_SUPABASE_URL` and secret `VITE_SUPABASE_ANON_KEY`. The anon key is intended for browser use; database access is restricted by RLS.
+
+## Legal note
+
+Unleashed records proof of authorship and agreed splits. Registering works for royalty collection (for example with EAÜ in Estonia or UPRS in Uganda) is still each artist's step. Payment and payout terms need review by a lawyer before Phase 4 goes live.
