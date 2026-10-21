@@ -4,7 +4,7 @@ Read this before every change in this repository.
 
 ## What Unleashed is
 
-Unleashed is an invite-only home and collaboration platform for artists, run by the artist BONHOMME at https://theoriginalbonhomme.github.io. BONHOMME built it first for himself: one central portfolio for everything he makes, plus the tools to collaborate easily with artists around the world. Every member gets the same tools.
+Unleashed is an invite-only home and collaboration platform for artists, run by the artist BONHOMME at https://theoriginalbonhomme.github.io/unleashed/. This GitHub Pages site lives at the `/unleashed/` path; the root address is a separate landing page in another repository. BONHOMME built it first for himself: one central portfolio for everything he makes, plus the tools to collaborate easily with artists around the world. Every member gets the same tools.
 
 Core rules of the platform (never break these):
 
