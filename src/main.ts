@@ -5,6 +5,7 @@ import releaseData from "../data/releases.json";
 import playlistData from "../data/playlists.json";
 import collabData from "../data/collabs.json";
 import bhLogoUrl from "../img/bonhomme-bh.svg";
+import portraitUrl from "../img/bonhomme-portrait.svg";
 import sealUrl from "../img/bonhomme-seal.svg";
 import wordmarkUrl from "../img/bonhomme-wordmark.svg";
 import { copy } from "./copy";
@@ -213,6 +214,7 @@ function assetPath(value: string | null | undefined): string {
   if (!value) return "";
   const assets: Record<string, string> = {
     "img/bonhomme-bh.svg": bhLogoUrl,
+    "img/bonhomme-portrait.svg": portraitUrl,
     "img/bonhomme-seal.svg": sealUrl,
     "img/bonhomme-wordmark.svg": wordmarkUrl,
   };
@@ -437,9 +439,10 @@ function textBlocks(value: string | undefined): string {
 
 function card(artist: Artist): string {
   const firstLookingForLine = (artist.looking_for ?? "").split(/\r?\n/).find((line) => line.trim())?.replace(/^- /, "") ?? "";
-  return `<article class="card"><img class="card-seal" src="${escapeHtml(sealUrl)}" alt="" width="48" height="48"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
-    <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>${artist.based ? `<span class="note">${escapeHtml(artist.based)}</span>` : ""}
-    ${firstLookingForLine ? `<div><span class="k">${escapeHtml(copy.profile.lookingFor)}</span><br>${escapeHtml(firstLookingForLine)}</div>` : ""}${artist.open_to_unleash !== false ? `<span class="open">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}</article>`;
+  const image = assetPath(artist.photo) || sealUrl;
+  return `<article class="card"><img class="card-seal" src="${escapeHtml(image)}" alt="" width="48" height="48"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
+    <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>${artist.based ? `<span class="note based-line">${escapeHtml(artist.based)}</span>` : ""}
+    ${firstLookingForLine ? `<div><span class="k accent-label">${escapeHtml(copy.profile.lookingFor)}</span><br><span class="card-looking">${escapeHtml(firstLookingForLine)}</span></div>` : ""}${artist.open_to_unleash !== false ? `<span class="open accent-yellow">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}</article>`;
 }
 
 function playlistFor(artist: Artist): Playlist[] {
@@ -466,7 +469,7 @@ function unleashButton(artist: Artist): string {
 }
 
 function workSection(title: string, releasesForSection: Release[], emptyMessage: string, showArtists = false): string {
-  return `<section class="stack"><h3 class="crate"><span>${escapeHtml(title)}</span><span>${releasesForSection.length}</span></h3><div class="list">${releasesForSection.map((release) => releaseRow(release, showArtists)).join("") || `<div class="empty">${escapeHtml(emptyMessage)}</div>`}</div></section>`;
+  return `<section class="stack"><h3 class="crate accent-label"><span>${escapeHtml(title)}</span><span>${releasesForSection.length}</span></h3><div class="list">${releasesForSection.map((release) => releaseRow(release, showArtists)).join("") || `<div class="empty">${escapeHtml(emptyMessage)}</div>`}</div></section>`;
 }
 
 function profile(artist: Artist): string {
@@ -494,13 +497,13 @@ function profile(artist: Artist): string {
       <div class="hero-txt"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
         ${wordmark ? `<h2 class="h" style="margin:0"><img class="wmark" src="${escapeHtml(wordmark)}" alt="${escapeHtml(artist.name)}"></h2>` : `<h2 class="h">${escapeHtml(artist.name)}</h2>`}
         ${artist.aliases?.length ? `<span class="k">${escapeHtml(copy.profile.alsoKnownAs)} ${artist.aliases.map(escapeHtml).join(" · ")}</span>` : ""}
-        <div class="hero-meta">${artist.based ? `<span>${escapeHtml(artist.based)}</span>` : ""}${artist.open_to_unleash !== false ? `<span class="open">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}${inviter ? `<span>${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(inviter.slug)}">${escapeHtml(inviter.name)}</a></span>` : ""}</div>
+        <div class="hero-meta">${artist.based ? `<span class="based-line">${escapeHtml(artist.based)}</span>` : ""}${artist.open_to_unleash !== false ? `<span class="open accent-yellow">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}${inviter ? `<span>${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(inviter.slug)}">${escapeHtml(inviter.name)}</a></span>` : ""}</div>
         ${unleashButton(artist)}
         <div class="links">${links}</div></div>
     </section>
     ${artist.bio ? `<section class="stack profile-copy">${textBlocks(artist.bio)}</section>` : ""}
     ${sections.map(([title, subtitle, content]) => content?.trim()
-      ? `<section class="stack profile-copy"><h3 class="crate"><span>${escapeHtml(title)}</span><span>${escapeHtml(subtitle)}</span></h3>${textBlocks(content)}</section>`
+      ? `<section class="stack profile-copy"><h3 class="crate accent-label"><span>${escapeHtml(title)}</span><span>${escapeHtml(subtitle)}</span></h3>${textBlocks(content)}</section>`
       : "").join("")}
     ${artistPlaylists.length ? `<div class="tools"><span class="k">${escapeHtml(copy.profile.playlists)}</span><button class="chip" data-pl="All" aria-pressed="${!selectedPlaylist}">${escapeHtml(copy.profile.everything)}</button>${artistPlaylists.map((playlist) => `<button class="chip" data-pl="${escapeHtml(playlist.id)}" aria-pressed="${selectedPlaylist?.id === playlist.id}">${escapeHtml(playlist.title)} · ${playlist.items.length}</button>`).join("")}</div>` : ""}
     <div class="stack profile-works">
