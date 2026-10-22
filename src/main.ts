@@ -276,6 +276,8 @@ function initialiseShell(): void {
   if (invitationPrompt) invitationPrompt.textContent = copy.brand.invitationPrompt;
   const invitationJoin = document.querySelector<HTMLAnchorElement>("#invitation-join");
   if (invitationJoin) invitationJoin.textContent = copy.brand.join;
+  const accountArea = document.querySelector<HTMLElement>("#account-area");
+  if (accountArea) accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
   const browseOldRender = document.querySelector<HTMLAnchorElement>("#browse-old-render");
   if (browseOldRender) {
     browseOldRender.textContent = copy.brand.browseOldRender;
@@ -291,6 +293,59 @@ function initialiseShell(): void {
   if (footer[1]) footer[1].textContent = copy.brand.footerTagline;
   const loading = appView.querySelector<HTMLElement>(".note");
   if (loading) loading.textContent = copy.brand.loading;
+}
+
+async function updateAccountHeader(): Promise<void> {
+  const accountArea = document.querySelector<HTMLElement>("#account-area");
+  if (!accountArea) return;
+  if (!supabase) {
+    accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
+    return;
+  }
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
+    showToast(`${copy.messages.signInError} ${error.message}`);
+    return;
+  }
+  const user = data.session?.user;
+  if (!user) {
+    accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
+    return;
+  }
+
+  const [{ data: profile, error: profileError }, { data: admin, error: adminError }] = await Promise.all([
+    supabase.from("profiles").select("name,slug,status").eq("id", user.id).maybeSingle(),
+    supabase.from("roles_admin").select("user_id").eq("user_id", user.id).maybeSingle(),
+  ]);
+  if (profileError) {
+    showToast(`${copy.brand.accountNameError} ${profileError.message}`);
+  }
+  if (adminError) {
+    showToast(`${copy.messages.curatorCheckError} ${adminError.message}`);
+  }
+  const name = profile?.name || user.email || copy.brand.signedIn;
+  accountArea.innerHTML = `<details class="account-menu"><summary>${escapeHtml(name)}</summary><div class="account-menu-items">
+    <a href="${profile?.status === "live" && profile.slug ? `#artist-${encodeURIComponent(profile.slug)}` : "#join"}">${escapeHtml(copy.brand.myProfile)}</a>
+    ${admin ? `<a href="#curator">${escapeHtml(copy.brand.curatorDesk)}</a>` : ""}
+    <button type="button" class="account-sign-out">${escapeHtml(copy.brand.signOut)}</button>
+  </div></details>`;
+  accountArea.querySelectorAll<HTMLAnchorElement>(".account-menu-items a").forEach((link) => {
+    link.addEventListener("click", () => {
+      const menu = accountArea.querySelector<HTMLDetailsElement>(".account-menu");
+      if (menu) menu.open = false;
+    });
+  });
+  accountArea.querySelector<HTMLButtonElement>(".account-sign-out")?.addEventListener("click", async () => {
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      showToast(`${copy.messages.signOutError} ${signOutError.message}`);
+      return;
+    }
+    showToast(copy.messages.signOutSuccess);
+    await updateAccountHeader();
+    await render();
+  });
 }
 
 const staticArtist = (slug: string): Artist | undefined => artists.find((artist) => artist.slug === slug);
@@ -656,6 +711,39 @@ function joinViewMarkup(): string {
     ${subscriberForm()}</div>`;
 }
 
+function signInViewMarkup(): string {
+  return `<div class="stack sign-in-view"><h2 class="h">${escapeHtml(copy.brand.signInTitle)}</h2>
+    <form class="stack" id="sign-in-form">
+      <label for="sign-in-email">${escapeHtml(copy.brand.signInEmail)}</label>
+      <input id="sign-in-email" name="email" type="email" autocomplete="email" required>
+      <button class="btn uv" type="submit">${escapeHtml(copy.brand.sendMeLink)}</button>
+      <p id="sign-in-message" class="note" aria-live="polite"></p>
+    </form>
+  </div>`;
+}
+
+function wireSignInForm(): void {
+  const form = appView.querySelector<HTMLFormElement>("#sign-in-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = form.querySelector<HTMLElement>("#sign-in-message");
+    if (!supabase) {
+      setMessage(message, copy.messages.configMissing, "error");
+      return;
+    }
+    const email = String(new FormData(form).get("email") ?? "").trim();
+    const submit = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    if (submit) submit.disabled = true;
+    const redirect = `${location.origin}${location.pathname}#channel`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirect, shouldCreateUser: false },
+    });
+    if (submit) submit.disabled = false;
+    setMessage(message, error ? `${copy.messages.linkError} ${error.message}` : copy.brand.signInSent, error ? "error" : "success");
+  });
+}
+
 function artistView(slug: string, liveArtists: Artist[]): string {
   const artist = staticArtist(slug) ?? liveArtists.find((candidate) => candidate.slug === slug);
   return artist
@@ -673,7 +761,9 @@ function routeName(): { view: string; arg: string } {
   const route = hash.slice(1);
   return route.startsWith("artist-")
     ? { view: "artist", arg: route.slice("artist-".length) }
-    : { view: ["channel", "library", "artists", "collab", "join"].includes(route) ? route : "channel", arg: "" };
+    : route === "curator"
+      ? { view: "join", arg: "curator" }
+      : { view: ["channel", "library", "artists", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
 }
 
 async function getLiveProfiles(): Promise<Artist[]> {
@@ -1039,6 +1129,11 @@ async function render(): Promise<void> {
       appView.innerHTML = joinViewMarkup();
       wireSubscriberForms();
       await joinPage();
+      if (route.arg === "curator") appView.querySelector("#curator-desk")?.scrollIntoView();
+      return;
+    case "signin":
+      appView.innerHTML = signInViewMarkup();
+      wireSignInForm();
       return;
     case "artist":
       appView.innerHTML = artistView(route.arg, liveArtists);
@@ -1055,6 +1150,10 @@ async function render(): Promise<void> {
 }
 
 initialiseShell();
+void updateAccountHeader();
+supabase?.auth.onAuthStateChange(() => {
+  window.setTimeout(() => void updateAccountHeader(), 0);
+});
 window.addEventListener("hashchange", () => {
   playlistFilter = copy.artists.all;
   void render().then(() => window.scrollTo(0, 0));

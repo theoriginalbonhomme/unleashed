@@ -24,6 +24,12 @@ a{color:inherit}
 header{display:grid;gap:14px}
 .invitation-prompt{font:400 11px var(--mono);letter-spacing:.02em;text-align:right;margin:0}
 .invitation-prompt a{color:var(--tq-text);font-weight:700}
+#account-area{display:inline-flex;align-items:center}
+.account-menu{position:relative;display:inline-block}
+.account-menu summary{display:inline-block;cursor:pointer;color:var(--tq-text);font-weight:700}
+.account-menu-items{position:absolute;right:0;top:calc(100% + 6px);z-index:4;display:grid;gap:2px;min-width:150px;padding:6px;background:var(--card);border:1px solid var(--line);text-align:left}
+.account-menu-items a,.account-menu-items button{font:400 12px var(--mono);text-align:left;padding:7px 8px;text-decoration:none;color:var(--ink);background:none;border:0;cursor:pointer}
+.account-menu-items a:hover,.account-menu-items button:hover{background:var(--bg)}
 .mast{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
 .word{font-family:var(--display);font-weight:400;font-size:clamp(44px,12.5vw,132px);line-height:.86;letter-spacing:-.035em;text-transform:uppercase;margin:0}
 .word span{background:var(--yellow);color:var(--on);padding:0 .03em;box-decoration-break:clone}
@@ -92,6 +98,9 @@ input[type=search]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid
 .subscriber-form .subscriber-consent{display:flex;gap:8px;align-items:flex-start;font-size:13px}
 .subscriber-form .subscriber-consent input{margin:4px 0 0;accent-color:var(--tq);flex:none}
 .subscriber-list{margin:0;padding-left:22px;display:grid;gap:4px;overflow-wrap:anywhere}
+.sign-in-view{max-width:440px}
+.sign-in-view label{font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.sign-in-view input[type=email]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:2px;width:100%}
 .feature-player{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.6fr);gap:18px;align-items:center}
 .feature-embed iframe{width:100%;border:0;display:block;background:var(--card)}
 .feature-embed .yt{aspect-ratio:16/9;height:auto}
