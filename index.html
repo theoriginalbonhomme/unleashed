@@ -10,20 +10,22 @@
   <body>
     <div class="wrap">
       <header>
+        <p class="invitation-prompt"><span id="invitation-prompt-text"></span> <a id="invitation-join" href="#join"></a></p>
         <div class="mast">
           <div>
             <h1 class="word"></h1>
             <p class="tag" id="tagline"></p>
             <div class="by"><img alt="" class="bh" /><span id="platform-line"></span></div>
           </div>
-          <a class="support" id="support" href="#join"></a>
+          <div class="header-actions">
+            <a class="btn uv" id="browse-old-render" href="#library"></a>
+            <a class="btn yellow" id="unleash" href="#collab"></a>
+          </div>
         </div>
-        <nav aria-label="Sections">
+        <nav aria-label="">
           <a href="#channel"></a>
           <a href="#library"></a>
           <a href="#artists"></a>
-          <a href="#collab"></a>
-          <a href="#join"></a>
         </nav>
       </header>
       <main id="view" aria-live="polite"><p class="note"></p></main>

@@ -99,6 +99,14 @@ type InviteRow = {
   created_at: string;
 };
 
+type SubscriberRow = {
+  id: string;
+  email: string;
+  consented_at: string;
+  unsubscribed_at: string | null;
+  created_at: string;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -118,6 +126,12 @@ type Database = {
         Row: { user_id: string };
         Insert: { user_id: string };
         Update: { user_id?: string };
+        Relationships: [];
+      };
+      subscribers: {
+        Row: SubscriberRow;
+        Insert: Pick<SubscriberRow, "email">;
+        Update: Partial<SubscriberRow>;
         Relationships: [];
       };
     };
@@ -252,16 +266,25 @@ function initialiseShell(): void {
   }
   const byline = document.querySelector<HTMLElement>("#platform-line");
   if (byline) byline.textContent = copy.brand.platform;
-  const navLabels = [copy.brand.channel, copy.brand.library, copy.brand.artists, copy.brand.collab, copy.brand.join];
+  const navLabels = [copy.brand.channel, copy.brand.library, copy.brand.artists];
   document.querySelectorAll<HTMLElement>("nav a").forEach((link, index) => {
     link.textContent = navLabels[index] ?? "";
   });
   const nav = document.querySelector("nav");
   if (nav) nav.setAttribute("aria-label", copy.brand.sectionsLabel);
-  const support = document.querySelector<HTMLAnchorElement>("#support");
-  if (support) {
-    support.textContent = copy.brand.supportLabel;
-    support.href = `${location.pathname}?downloadable=1#library`;
+  const invitationPrompt = document.querySelector<HTMLElement>("#invitation-prompt-text");
+  if (invitationPrompt) invitationPrompt.textContent = copy.brand.invitationPrompt;
+  const invitationJoin = document.querySelector<HTMLAnchorElement>("#invitation-join");
+  if (invitationJoin) invitationJoin.textContent = copy.brand.join;
+  const browseOldRender = document.querySelector<HTMLAnchorElement>("#browse-old-render");
+  if (browseOldRender) {
+    browseOldRender.textContent = copy.brand.browseOldRender;
+    browseOldRender.href = `${location.pathname}?downloadable=1#library`;
+  }
+  const unleash = document.querySelector<HTMLAnchorElement>("#unleash");
+  if (unleash) {
+    unleash.textContent = copy.brand.unleash;
+    unleash.href = "#collab";
   }
   const footer = document.querySelectorAll<HTMLElement>("footer span");
   if (footer[0]) footer[0].textContent = copy.brand.footer;
@@ -517,13 +540,51 @@ function contributionHref(): string {
   return `${location.pathname}?downloadable=1#library`;
 }
 
+function subscriberForm(): string {
+  return `<section class="stack subscriber-block"><h3 class="crate"><span>${escapeHtml(copy.subscriber.title)}</span></h3>
+    <p class="note">${escapeHtml(copy.subscriber.text)}</p>
+    <form class="subscriber-form stack">
+      <label for="subscriber-email">${escapeHtml(copy.subscriber.email)}</label>
+      <input id="subscriber-email" name="email" type="email" autocomplete="email" required>
+      <label class="subscriber-consent"><input name="consent" type="checkbox" required> <span>${escapeHtml(copy.subscriber.consent)}</span></label>
+      <button class="btn uv" type="submit">${escapeHtml(copy.subscriber.notify)}</button>
+      <p class="subscriber-message note" aria-live="polite"></p>
+    </form>
+  </section>`;
+}
+
+function wireSubscriberForms(): void {
+  appView.querySelectorAll<HTMLFormElement>(".subscriber-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!supabase) {
+        setMessage(form.querySelector(".subscriber-message"), copy.messages.configMissing, "error");
+        return;
+      }
+      const values = new FormData(form);
+      const email = String(values.get("email") ?? "").trim().toLowerCase();
+      if (!values.has("consent")) return;
+      const submit = form.querySelector<HTMLButtonElement>("button[type=submit]");
+      if (submit) submit.disabled = true;
+      const { error } = await supabase.from("subscribers").insert({ email });
+      if (submit) submit.disabled = false;
+      if (error) {
+        setMessage(form.querySelector(".subscriber-message"), `${copy.messages.subscriberSubmitError} ${error.message}`, "error");
+        return;
+      }
+      form.reset();
+      setMessage(form.querySelector(".subscriber-message"), copy.subscriber.thanks, "success");
+    });
+  });
+}
+
 function channelView(): string {
   const artist = staticArtist("bonhomme") ?? artists[0];
   const intro = site.intro ? `<p class="intro">${escapeHtml(site.intro)}</p>` : "";
   if (!artist) return `<div class="empty">${escapeHtml(copy.profile.noProfile)}</div>`;
   const latest = releases.find((release) => /dj mix|dj set|live set|track/i.test(release.type) && Boolean(embed(release.url ?? "")));
   const latestPlayer = latest
-    ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title)}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.contribute)}</a></div></div></section>`
+    ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title)}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.browseOldRender)}</a></div></div></section>`
     : `<div class="empty">${escapeHtml(copy.profile.noMusic)}</div>`;
   const newest = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).slice(0, 4);
   const openCalls = collabs.filter((call) => (call.status ?? "").toLowerCase() === "open");
@@ -534,6 +595,7 @@ function channelView(): string {
   return `${intro}<div class="stack channel-content">${latestPlayer}
     <div class="stack home-works">${workSection(copy.channel.djSets, newest("dj"), copy.profile.nothingYet)}${workSection(copy.channel.productions, newest("production"), copy.profile.nothingYet)}${workSection(copy.channel.unleashed, newest("unleashed"), copy.profile.firstUnleash, true)}</div>
     <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.openCalls)}</span><a href="#collab">${escapeHtml(copy.collab.openAll)}</a></h3><div class="cards">${callsMarkup || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></section>
+    ${subscriberForm()}
     <p class="note channel-meaning">${escapeHtml(copy.channel.meaning)} <a href="#artist-bonhomme">${escapeHtml(copy.channel.readProfile)}</a></p>
   </div>`;
 }
@@ -591,9 +653,7 @@ function joinViewMarkup(): string {
       <div class="step"><b>${escapeHtml(copy.join.verifyIntention)}</b><span>${escapeHtml(copy.join.verifyIntentionText)}</span></div>
       <div class="step"><b>${escapeHtml(copy.join.makeThings)}</b><span>${escapeHtml(copy.join.makeText)}</span></div>
     </div>
-    <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.brand.supportLabel)}</span><span>${escapeHtml(copy.contribution.optional)}</span></h3>
-      <p class="note"><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.brand.supportLabel)}</a></p>
-    </section></div>`;
+    ${subscriberForm()}</div>`;
 }
 
 function artistView(slug: string, liveArtists: Artist[]): string {
@@ -730,12 +790,18 @@ async function loadCuratorDesk(currentUserId: string): Promise<string> {
   if (adminError) throw new Error(`${copy.messages.curatorCheckError} ${adminError.message}`);
   if (!admin) return "";
 
-  const [{ data: profileRows, error: profileError }, { data: inviteRows, error: inviteError }] = await Promise.all([
+  const [
+    { data: profileRows, error: profileError },
+    { data: inviteRows, error: inviteError },
+    { data: subscriberRows, error: subscriberError },
+  ] = await Promise.all([
     supabase.from("profiles").select("id,slug,name,roles,location,bio,offers,looking_for,creates,links,contact,photo_path,status,invited_by,created_at").order("created_at"),
     supabase.from("invites").select("*").order("created_at"),
+    supabase.from("subscribers").select("id,email,consented_at,unsubscribed_at,created_at").order("created_at"),
   ]);
   if (profileError) throw new Error(`${copy.messages.loadProfilesError} ${profileError.message}`);
   if (inviteError) throw new Error(`${copy.messages.inviteListError} ${inviteError.message}`);
+  if (subscriberError) throw new Error(`${copy.messages.subscriberLoadError} ${subscriberError.message}`);
 
   const allProfiles = profileRows ?? [];
   const allInvites = inviteRows ?? [];
@@ -748,7 +814,11 @@ async function loadCuratorDesk(currentUserId: string): Promise<string> {
   const intentionByProfile = new Map((intentions ?? []).map((item) => [item.profile_id, item.intention]));
   return `<section id="curator-desk" class="stack"><h3 class="crate"><span>${escapeHtml(copy.join.curatorDesk)}</span><span>${escapeHtml(copy.join.pendingApplications)}</span></h3>
     ${pending.length ? pending.map((profile) => `<article class="card pending-card" style="margin:10px 0"><span class="k">${escapeHtml(new Date(profile.created_at).toLocaleDateString())}</span><h4>${escapeHtml(profile.name)}</h4><span class="note">${escapeHtml(profile.roles.join(" · "))}${profile.location ? ` · ${escapeHtml(profile.location)}` : ""}</span><p class="lead">${escapeHtml(profile.bio)}</p><section class="stack"><h3 class="crate"><span>${escapeHtml(copy.join.intention)}</span></h3>${textBlocks(intentionByProfile.get(profile.id))}</section>${profile.invited_by ? `<p class="note">${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(allProfiles.find((inviter) => inviter.id === profile.invited_by)?.slug ?? "")}">${escapeHtml(names.get(profile.invited_by) ?? "")}</a></p>` : ""}<div class="links"><button class="btn uv" type="button" data-review="approve" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.approve)}</button><button class="btn" type="button" data-review="veto" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.veto)}</button></div></article>`).join("") : `<p class="note">${escapeHtml(copy.join.noPending)}</p>`}
-    <details><summary class="k">${escapeHtml(copy.join.fullInviteTree)}</summary><ul class="journey">${allProfiles.map((profile) => `<li><b>${escapeHtml(profile.name)}</b><span class="note">${profile.invited_by ? `${escapeHtml(copy.profile.invitedBy)} ${escapeHtml(names.get(profile.invited_by) ?? "")}` : ""}${allInvites.filter((invite) => invite.created_by === profile.id).map((invite) => `<br>${escapeHtml(invite.email)} · ${escapeHtml(invite.used_by ? copy.join.used : copy.join.unused)} · ${escapeHtml(copy.join.inviteExpires)} ${escapeHtml(new Date(invite.expires_at).toLocaleDateString())}`).join("")}</span></li>`).join("") || `<li class="note">${escapeHtml(copy.join.noPending)}</li>`}</ul></details><p id="review-message" aria-live="polite"></p></section>`;
+    <details><summary class="k">${escapeHtml(copy.join.fullInviteTree)}</summary><ul class="journey">${allProfiles.map((profile) => `<li><b>${escapeHtml(profile.name)}</b><span class="note">${profile.invited_by ? `${escapeHtml(copy.profile.invitedBy)} ${escapeHtml(names.get(profile.invited_by) ?? "")}` : ""}${allInvites.filter((invite) => invite.created_by === profile.id).map((invite) => `<br>${escapeHtml(invite.email)} · ${escapeHtml(invite.used_by ? copy.join.used : copy.join.unused)} · ${escapeHtml(copy.join.inviteExpires)} ${escapeHtml(new Date(invite.expires_at).toLocaleDateString())}`).join("")}</span></li>`).join("") || `<li class="note">${escapeHtml(copy.join.noPending)}</li>`}</ul></details>
+    <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.subscriber.curatorTitle)}</span><button type="button" class="btn copy-subscriber-emails">${escapeHtml(copy.subscriber.copyAllEmails)}</button></h3>
+      <ul class="subscriber-list">${(subscriberRows ?? []).map((subscriber) => `<li>${escapeHtml(subscriber.email)}</li>`).join("") || `<li class="note">${escapeHtml(copy.subscriber.empty)}</li>`}</ul>
+      <p id="subscriber-copy-message" aria-live="polite"></p>
+    </section><p id="review-message" aria-live="polite"></p></section>`;
 }
 
 async function joinPage(): Promise<void> {
@@ -843,6 +913,17 @@ async function joinPage(): Promise<void> {
       const curator = await loadCuratorDesk(user.id);
       if (curator) {
         panel.insertAdjacentHTML("beforeend", curator);
+        panel.querySelector<HTMLButtonElement>(".copy-subscriber-emails")?.addEventListener("click", async () => {
+          const emails = [...panel.querySelectorAll(".subscriber-list li")]
+            .map((item) => item.textContent?.trim() ?? "")
+            .filter((email) => email.includes("@"));
+          try {
+            await navigator.clipboard.writeText(emails.join("\n"));
+            setMessage(panel.querySelector("#subscriber-copy-message"), copy.subscriber.copied, "success");
+          } catch {
+            setMessage(panel.querySelector("#subscriber-copy-message"), copy.subscriber.copyError, "error");
+          }
+        });
         panel.querySelectorAll<HTMLButtonElement>("[data-review]").forEach((button) => {
           button.addEventListener("click", async () => {
             button.disabled = true;
@@ -956,6 +1037,7 @@ async function render(): Promise<void> {
       return;
     case "join":
       appView.innerHTML = joinViewMarkup();
+      wireSubscriberForms();
       await joinPage();
       return;
     case "artist":
@@ -966,6 +1048,7 @@ async function render(): Promise<void> {
     case "channel":
     default:
       appView.innerHTML = channelView();
+      wireSubscriberForms();
       wireProfile();
       wirePlay();
   }
