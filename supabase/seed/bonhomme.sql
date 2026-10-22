@@ -37,7 +37,7 @@ begin
     'BONHOMME',
     array['Producer', 'DJ', 'Music & sound art']::text[],
     'Travelling the world for more than 30 years',
-    $bio$In the Cathar lands of southern France, people called the members of a brotherhood of absolute goodness bonshommes: good men. BONHOMME carries that name into club culture: music made by hand, honestly, in service of art.
+    $bio$In the Cathar lands of southern France, people called the members of a brotherhood of absolute goodness bonshommes: good men. BONHOMME carries that name into dance music culture: music made by loving humans, in service of art.
 
 Genre doesn't matter. What matters is that the music is good and the sound is perfect.
 
@@ -45,15 +45,16 @@ On the road since I was seven, at judo competitions in Finland. Fighting sports 
 
 At festivals I have been assistant to the deco team leader, a light and sound technician, and above all a dancer who holds the room from the floor, in unity, kindness and safety. Pure love for the right people and the music. I always watch for the artist who needs help, and I will do anything in my power to help them deliver the art.$bio$,
     $offers$- Make a good track sound perfect: mix, master, fix the sound.
+- Make crazy decisions to make art happen. Usually long hours, sometimes a missed flight. Always worth it.
 - Produce: from a rough idea or a voice memo to a finished track.
 - DJ: read the room and carry the night, from warm-up to peak time, and most importantly the afters.
 - Hold the room from the dance floor: unity, kindness and safety.
 - Crew: deco, lights and sound. Whatever the artist needs to deliver the art.
 - Coach 1:1, in fighting or any field, for people whose intention is to become the best. I choose my students carefully.
-- Fight: Estonia's first MMA champion (2015, 77.1 kg), judo 2nd dan, BJJ blue belt. Wherever I travel, I visit a gym and spar.
-- Collaborate anywhere. More than 30 years on the road, in Estonian and English.
-- Sail. I'm a licensed skipper, so the studio can be a boat.
-- Build tools for artists: Unleashed and Rhyme Rumble.$offers$,
+- Fight: Estonia's first MMA champion (2015, 77.1 kg), judo 2nd dan, BJJ blue belt. Wherever I travel, I visit a gym and spar. Three Gracie BJJ academies so far, and my best boxing coach was in India.
+- Sail: licensed skipper with 10+ years of blue water, for hire. SAR (search and rescue) team leader, so I watch out for everyone on board.
+- Make art and music anywhere, often together with the people we want to make it with. More than 30 years on the road, in Estonian and English.
+- Explore, in every possible way: new sounds, new places, new people, new ways of making art.$offers$,
     $looking$- People who breathe music, who are driven by it, whatever they play or make.
 - An unleash together brings the energy to face the rest of life.
 - Got a good track, but the sound is shit? That ends here. Send it.
@@ -67,7 +68,8 @@ Goals:
     array[
       'https://www.mixcloud.com/theoriginalbonhomme/',
       'https://soundcloud.com/rickyvonmond',
-      'https://www.youtube.com/@theoriginalbonhomme'
+      'https://www.youtube.com/@theoriginalbonhomme',
+      'https://www.youtube.com/@rickyvonmond'
     ]::text[],
     'img/bonhomme-portrait.svg',
     'live',
