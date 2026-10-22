@@ -16,16 +16,7 @@ Sign-in uses email magic links only. Invitees must use the address that received
 
 ## First Curator setup
 
-After applying the migration, run the seed script with a Supabase service-role key and the Curator's email:
-
-```sh
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY \
-BONHOMME_EMAIL=you@example.com \
-npm run seed
-```
-
-The script reads the BONHOMME profile from `data/artists.json`, creates or reuses the Supabase Auth user, and marks the profile live and the user as admin. Never expose the service-role key in the browser or GitHub Pages build.
+After applying both migrations, create your account under **Authentication → Users** in Supabase. Open **SQL Editor**, paste the contents of `supabase/seed/bonhomme.sql`, replace its single `YOUR_EMAIL_HERE` placeholder with the same account email, and run it. This browser-only seed reads the existing account, inserts or updates BONHOMME's live profile and grants that account the Curator role. It does not need Terminal or a service-role key.
 
 ## GitHub Pages
 
