@@ -34,6 +34,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 textarea:focus-visible,summary:focus-visible{outline:2px solid var(--tq-text);outline-offset:2px}
 h2.h{font-family:var(--display);font-weight:400;font-size:clamp(32px,7vw,52px);line-height:.95;letter-spacing:-.01em;text-transform:uppercase;margin:0;text-wrap:balance}
 h3.crate{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;margin:0;color:var(--dim);display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:6px}
+h3.crate.accent-label{color:var(--tq-text)}
+.k.accent-label{color:var(--tq-text)}
 .lead{margin:0;max-width:62ch}
 .intro{margin:0 0 24px;max-width:58ch;font-size:clamp(17px,2.2vw,21px);line-height:1.5;border-left:4px solid var(--yellow);padding-left:16px}
 .note{margin:0;font-size:13px;color:var(--dim);max-width:62ch}
@@ -61,11 +63,6 @@ h3.crate{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase
 input[type=search]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:2px;min-width:0;flex:1 1 200px}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px}
 .hero{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:22px;align-items:center}
-.hero.tinted{background:var(--ac);color:#242323;padding:18px;border-radius:0}
-.hero.tinted .k,.hero.tinted .note,.hero.tinted .hero-meta{color:#242323}
-.hero.tinted .role{background:#242323;color:var(--ac)}
-.hero.tinted .btn{border-color:#242323;color:#242323}
-.hero.tinted .open{color:#242323}.hero.tinted .open::before{background:#242323}
 .hero-txt{display:grid;gap:10px;min-width:0}
 .hero-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--dim);align-items:center}
 .portrait{width:100%;height:auto;aspect-ratio:1;display:block;border-radius:0;object-fit:cover}
@@ -76,7 +73,22 @@ input[type=search]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .by img{filter:invert(1) brightness(1.1)}}
 :root[data-theme="dark"] .by img{filter:invert(1) brightness(1.1)}
 @media (max-width:620px){.hero{grid-template-columns:1fr}.portrait{max-width:240px}}
-.thumb{width:64px;height:64px;border-radius:50%;object-fit:cover}
+@media (max-width:620px){.feature-player{grid-template-columns:1fr}}
+.card-seal{width:48px;height:48px;object-fit:contain}
+.based-line{color:var(--tq-text)}
+.card-looking{background:var(--yellow);color:var(--on);padding:0 3px}
+.accent-yellow{background:var(--yellow);color:var(--on);padding:2px 4px;width:fit-content;max-width:100%}
+.profile-copy{max-width:72ch}
+.profile-copy p{margin:0}
+.profile-list{margin:0;padding-left:22px;display:grid;gap:8px}
+.channel-content{margin-top:4px}
+.feature-player{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.6fr);gap:18px;align-items:center}
+.feature-embed iframe{width:100%;border:0;display:block;background:var(--card)}
+.feature-embed .yt{aspect-ratio:16/9;height:auto}
+.feature-copy{display:grid;gap:10px;min-width:0}
+.feature-copy>b{font-family:var(--display);font-weight:400;font-size:clamp(22px,4vw,34px);line-height:1;text-transform:uppercase}
+.feature-copy .m{font:400 12px var(--mono);color:var(--dim)}
+.channel-meaning{padding-top:12px;border-top:1px solid var(--line)}
 .mood{border-bottom:2px solid var(--yellow)}
 .journey{margin:0;padding:0;list-style:none;display:grid;gap:10px;border-left:2px solid var(--ink);padding-left:14px}
 .journey li{display:grid;gap:2px;position:relative}
@@ -109,3 +121,9 @@ input[type=search]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid
 footer{font:400 12px var(--mono);color:var(--dim);border-top:1px solid var(--line);padding-top:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:2px;font-size:13px;max-width:calc(100% - 32px);z-index:5}
 @media (max-width:520px){.rel{grid-template-columns:1fr}.rel .acts{grid-row:auto;justify-content:flex-start}}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .card-looking,
+  :root:not([data-theme="light"]) .accent-yellow{background:transparent;color:var(--yellow);padding:0}
+}
+:root[data-theme="dark"] .card-looking,
+:root[data-theme="dark"] .accent-yellow{background:transparent;color:var(--yellow);padding:0}

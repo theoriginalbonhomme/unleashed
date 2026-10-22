@@ -5,6 +5,7 @@ import releaseData from "../data/releases.json";
 import playlistData from "../data/playlists.json";
 import collabData from "../data/collabs.json";
 import bhLogoUrl from "../img/bonhomme-bh.svg";
+import portraitUrl from "../img/bonhomme-portrait.svg";
 import sealUrl from "../img/bonhomme-seal.svg";
 import wordmarkUrl from "../img/bonhomme-wordmark.svg";
 import { copy } from "./copy";
@@ -17,14 +18,15 @@ type Artist = {
   roles?: string[];
   based?: string;
   bio?: string;
+  offers?: string;
   looking_for?: string;
+  creates?: string;
   links?: string[];
   contact?: string;
-  open_to_collab?: boolean;
+  open_to_unleash?: boolean;
   photo?: string;
   color?: string;
   sections?: { alias?: string; role: string; types?: string[] }[];
-  story?: string;
   wordmark?: string;
   meaning?: string;
   invited_by?: string | null;
@@ -63,6 +65,7 @@ type Collab = {
   date?: string;
   have?: string;
   need?: string[];
+  text?: string;
   link?: string;
   status?: string;
 };
@@ -74,7 +77,9 @@ type ProfileRow = {
   roles: string[];
   location: string;
   bio: string;
+  offers: string;
   looking_for: string;
+  creates: string;
   links: string[];
   contact: string;
   photo_path: string | null;
@@ -131,12 +136,23 @@ type Database = {
           p_roles: string[];
           p_location: string;
           p_bio: string;
+          p_offers: string;
           p_looking_for: string;
+          p_creates: string;
+          p_intention: string;
           p_links: string[];
           p_contact: string;
           p_photo_path?: string | null;
         };
         Returns: string;
+      };
+      get_profile_intentions: {
+        Args: { p_profile_ids: string[] };
+        Returns: { profile_id: string; intention: string }[];
+      };
+      get_live_profile_inviters: {
+        Args: { p_profile_ids: string[] };
+        Returns: { profile_id: string; inviter_name: string; inviter_slug: string }[];
       };
       admin_review_profile: {
         Args: { p_profile_id: string; p_approve: boolean };
@@ -198,6 +214,7 @@ function assetPath(value: string | null | undefined): string {
   if (!value) return "";
   const assets: Record<string, string> = {
     "img/bonhomme-bh.svg": bhLogoUrl,
+    "img/bonhomme-portrait.svg": portraitUrl,
     "img/bonhomme-seal.svg": sealUrl,
     "img/bonhomme-wordmark.svg": wordmarkUrl,
   };
@@ -244,17 +261,7 @@ function initialiseShell(): void {
   const support = document.querySelector<HTMLAnchorElement>("#support");
   if (support) {
     support.textContent = copy.brand.supportLabel;
-    const supportUrl = safeUrl(site.support_url);
-    if (supportUrl) {
-      support.href = supportUrl;
-      support.target = "_blank";
-      support.rel = "noopener";
-    } else {
-      support.addEventListener("click", (event) => {
-        event.preventDefault();
-        showToast(site.support_note || copy.contribution.comingSoon);
-      });
-    }
+    support.href = `${location.pathname}?downloadable=1#library`;
   }
   const footer = document.querySelectorAll<HTMLElement>("footer span");
   if (footer[0]) footer[0].textContent = copy.brand.footer;
@@ -282,16 +289,16 @@ function embed(value: string): string {
   if (!url) return "";
   const kind = platform(url);
   if (kind === "SoundCloud") {
-    return `<iframe height="166" allow="autoplay" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%2300B8C7&auto_play=true&visual=false" title="${escapeHtml(copy.profile.soundCloudPlayer)}"></iframe>`;
+    return `<iframe height="166" allow="autoplay" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%2300B8C7&auto_play=false&visual=false" title="${escapeHtml(copy.profile.soundCloudPlayer)}"></iframe>`;
   }
   if (kind === "Mixcloud") {
     const path = new URL(url).pathname;
-    return `<iframe height="120" allow="autoplay" src="https://www.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(path)}&autoplay=1&hide_cover=1" title="${escapeHtml(copy.profile.mixcloudPlayer)}"></iframe>`;
+    return `<iframe height="120" allow="autoplay" src="https://www.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(path)}&autoplay=0&hide_cover=1" title="${escapeHtml(copy.profile.mixcloudPlayer)}"></iframe>`;
   }
   if (kind === "YouTube") {
     const match = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/);
     if (match) {
-      return `<iframe class="yt" allow="autoplay; encrypted-media" allowfullscreen src="https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=1" title="${escapeHtml(copy.profile.youtubePlayer)}"></iframe>`;
+      return `<iframe class="yt" allow="autoplay; encrypted-media" allowfullscreen src="https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0" title="${escapeHtml(copy.profile.youtubePlayer)}"></iframe>`;
     }
   }
   return "";
@@ -312,7 +319,7 @@ function releaseRow(release: Release, showArtists = true): string {
   const kind = url ? platform(url) : "";
   const canPlay = Boolean(url && embed(url));
   const metadata = [
-    `<span class="type">${escapeHtml(release.type)}</span>`,
+    `<span class="type">${escapeHtml(/collab/i.test(release.type) ? copy.profile.unleashed : release.type)}</span>`,
     showArtists ? `<span>${credits(release)}</span>` : "",
     release.alias ? `<span>${escapeHtml(copy.profile.as)} ${escapeHtml(release.alias)}</span>` : "",
     release.bpm ? `<span>${escapeHtml(release.bpm)} ${escapeHtml(copy.profile.bpm)}</span>` : "",
@@ -410,91 +417,139 @@ function openGive(button: HTMLButtonElement): void {
   });
 }
 
+function textBlocks(value: string | undefined): string {
+  const output: string[] = [];
+  let bullets: string[] = [];
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    output.push(`<ul class="profile-list">${bullets.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`);
+    bullets = [];
+  };
+  for (const line of (value ?? "").split(/\r?\n/)) {
+    if (line.startsWith("- ")) {
+      bullets.push(line.slice(2));
+    } else {
+      flushBullets();
+      if (line.trim()) output.push(`<p class="lead">${escapeHtml(line)}</p>`);
+    }
+  }
+  flushBullets();
+  return output.join("");
+}
+
 function card(artist: Artist): string {
-  const image = assetPath(artist.photo);
-  return `<article class="card">${image ? `<img class="thumb" src="${escapeHtml(image)}" alt="" width="64" height="64">` : ""}<div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
-    <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>${artist.based ? `<span class="note">${escapeHtml(artist.based)}</span>` : ""}
-    <div><span class="k">${escapeHtml(copy.profile.lookingFor)}</span><br>${escapeHtml(artist.looking_for ?? "")}</div>${artist.open_to_collab !== false ? `<span class="open">${escapeHtml(copy.profile.openToCollaborate)}</span>` : ""}</article>`;
+  const firstLookingForLine = (artist.looking_for ?? "").split(/\r?\n/).find((line) => line.trim())?.replace(/^- /, "") ?? "";
+  const image = assetPath(artist.photo) || sealUrl;
+  return `<article class="card"><img class="card-seal" src="${escapeHtml(image)}" alt="" width="48" height="48"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
+    <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>${artist.based ? `<span class="note based-line">${escapeHtml(artist.based)}</span>` : ""}
+    ${firstLookingForLine ? `<div><span class="k accent-label">${escapeHtml(copy.profile.lookingFor)}</span><br><span class="card-looking">${escapeHtml(firstLookingForLine)}</span></div>` : ""}${artist.open_to_unleash !== false ? `<span class="open accent-yellow">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}</article>`;
 }
 
 function playlistFor(artist: Artist): Playlist[] {
   return playlists.filter((playlist) => playlist.by === artist.slug);
 }
 
-function profile(artist: Artist, home: boolean): string {
-  const slug = artist.slug;
-  const releasesForArtist = releases.filter((release) => (release.artists ?? []).includes(slug));
-  const calls = collabs.filter((collab) => collab.by === slug);
+function workGroup(release: Release): "dj" | "production" | "unleashed" {
+  const type = release.type.toLowerCase();
+  if ((release.artists ?? []).length > 1 || type.includes("collab") || type.includes("unleash")) return "unleashed";
+  return /dj mix|dj set|live set/.test(type) ? "dj" : "production";
+}
+
+function contactHref(artist: Artist): string {
+  const url = safeUrl(artist.contact);
+  if (url) return url;
+  const email = artist.contact?.trim() ?? "";
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? `mailto:${encodeURIComponent(email)}` : "#collab";
+}
+
+function unleashButton(artist: Artist): string {
+  return artist.open_to_unleash === false
+    ? ""
+    : `<a class="btn uv" href="${escapeHtml(contactHref(artist))}">${escapeHtml(copy.profile.unleashTrack)}</a>`;
+}
+
+function workSection(title: string, releasesForSection: Release[], emptyMessage: string, showArtists = false): string {
+  return `<section class="stack"><h3 class="crate accent-label"><span>${escapeHtml(title)}</span><span>${releasesForSection.length}</span></h3><div class="list">${releasesForSection.map((release) => releaseRow(release, showArtists)).join("") || `<div class="empty">${escapeHtml(emptyMessage)}</div>`}</div></section>`;
+}
+
+function profile(artist: Artist): string {
+  const releasesForArtist = releases.filter((release) => (release.artists ?? []).includes(artist.slug));
   const artistPlaylists = playlistFor(artist);
   const selectedPlaylist = artistPlaylists.find((playlist) => playlist.id === playlistFilter);
-  const selectedReleases = selectedPlaylist
-    ? selectedPlaylist.items.map((id) => releases.find((release) => release.id === id)).filter((item): item is Release => Boolean(item))
-    : null;
-  const crate = (title: string, subheading: string, items: Release[], emptyMessage: string) =>
-    `<section class="stack"><h3 class="crate"><span>${title}</span><span>${subheading}</span></h3><div class="list">${items.map((release) => releaseRow(release, false)).join("") || `<div class="empty">${emptyMessage}</div>`}</div></section>`;
-  let musicBody: string;
-  if (selectedPlaylist) {
-    musicBody = crate(escapeHtml(selectedPlaylist.title), `${escapeHtml(copy.profile.playlist)} · ${selectedReleases?.length ?? 0}`, selectedReleases ?? [], copy.profile.emptyPlaylist);
-  } else if (artist.sections?.length) {
-    const solo = releasesForArtist.filter((release) => (release.artists ?? []).length === 1 && !/collab/i.test(release.type));
-    const shared = releasesForArtist.filter((release) => (release.artists ?? []).length > 1 || /collab/i.test(release.type));
-    musicBody = `<div class="cols">${artist.sections.map((section) => {
-      const title = section.role === "DJ" ? copy.profile.djSets : section.role === "Producer" ? copy.profile.productions : section.role;
-      return crate(escapeHtml(title), escapeHtml(section.alias ?? ""), solo.filter((release) => (section.types ?? []).includes(release.type)), copy.profile.nothingYet);
-    }).join("")}</div>${crate(copy.profile.collabs, copy.profile.withFriends, shared, `${escapeHtml(copy.profile.collabsLand)} <a href="#collab">${escapeHtml(copy.profile.seeCollab)}</a>.`)}`;
-  } else {
-    musicBody = crate(copy.profile.music, String(releasesForArtist.length), releasesForArtist, copy.profile.collabUnavailable);
-  }
-
-  const places = new Map<string, Release[]>();
-  releasesForArtist.forEach((release) => {
-    if (release.place) places.set(release.place, [...(places.get(release.place) ?? []), release]);
-  });
-  const color = /^#[0-9a-f]{6}$/i.test(artist.color ?? "") ? artist.color : "";
-  const portrait = assetPath(artist.photo);
+  const playlistItems = selectedPlaylist ? new Set(selectedPlaylist.items) : null;
+  const profileWorks = (group: "dj" | "production" | "unleashed") => releasesForArtist
+    .filter((release) => workGroup(release) === group && (!playlistItems || playlistItems.has(release.id)));
+  const portrait = assetPath(artist.photo) || sealUrl;
   const wordmark = assetPath(artist.wordmark);
   const inviter = artist.inviter;
-  return `<div class="stack" style="gap:24px">${home ? "" : `<a class="back" href="#artists">${escapeHtml(copy.profile.back)}</a>`}
-    <section class="hero${color ? " tinted" : ""}"${color ? ` style="--ac:${escapeHtml(color)}"` : ""}>
-      ${portrait ? `<img class="portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(copy.profile.portraitAlt)} ${escapeHtml(artist.name)}" width="640" height="640">` : ""}
+  const links = (artist.links ?? []).map((link) => {
+    const url = safeUrl(link);
+    return url ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(platform(url))}</a>` : "";
+  }).join("");
+  const sections = [
+    [copy.profile.offersTitle, copy.profile.offersSubtitle, artist.offers],
+    [copy.profile.lookingFor, copy.profile.lookingForSubtitle, artist.looking_for],
+    [copy.profile.createsTitle, copy.profile.createsSubtitle, artist.creates],
+  ] as const;
+  return `<div class="stack" style="gap:24px"><a class="back" href="#artists">${escapeHtml(copy.profile.back)}</a>
+    <section class="hero">
+      <img class="portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(copy.profile.portraitAlt)} ${escapeHtml(artist.name)}" width="640" height="640">
       <div class="hero-txt"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
         ${wordmark ? `<h2 class="h" style="margin:0"><img class="wmark" src="${escapeHtml(wordmark)}" alt="${escapeHtml(artist.name)}"></h2>` : `<h2 class="h">${escapeHtml(artist.name)}</h2>`}
-        ${artist.meaning ? `<span class="k">${escapeHtml(artist.meaning)}</span>` : ""}
         ${artist.aliases?.length ? `<span class="k">${escapeHtml(copy.profile.alsoKnownAs)} ${artist.aliases.map(escapeHtml).join(" · ")}</span>` : ""}
-        ${(artist.bio ?? "").split(/\n\n+/).filter(Boolean).map((paragraph) => `<p class="lead">${escapeHtml(paragraph)}</p>`).join("")}
-        <div class="hero-meta">${artist.based ? `<span>${escapeHtml(artist.based)}</span>` : ""}${artist.open_to_collab !== false ? `<span class="open">${escapeHtml(copy.profile.openToCollaborate)}</span>` : ""}${inviter ? `<span>${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(inviter.slug)}">${escapeHtml(inviter.name)}</a></span>` : ""}</div>
-        <div class="links">${(artist.links ?? []).map((link) => {
-          const url = safeUrl(link);
-          return url ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(platform(url))}</a>` : "";
-        }).join("")}</div></div>
+        <div class="hero-meta">${artist.based ? `<span class="based-line">${escapeHtml(artist.based)}</span>` : ""}${artist.open_to_unleash !== false ? `<span class="open accent-yellow">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}${inviter ? `<span>${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(inviter.slug)}">${escapeHtml(inviter.name)}</a></span>` : ""}</div>
+        ${unleashButton(artist)}
+        <div class="links">${links}</div></div>
     </section>
+    ${artist.bio ? `<section class="stack profile-copy">${textBlocks(artist.bio)}</section>` : ""}
+    ${sections.map(([title, subtitle, content]) => content?.trim()
+      ? `<section class="stack profile-copy"><h3 class="crate accent-label"><span>${escapeHtml(title)}</span><span>${escapeHtml(subtitle)}</span></h3>${textBlocks(content)}</section>`
+      : "").join("")}
     ${artistPlaylists.length ? `<div class="tools"><span class="k">${escapeHtml(copy.profile.playlists)}</span><button class="chip" data-pl="All" aria-pressed="${!selectedPlaylist}">${escapeHtml(copy.profile.everything)}</button>${artistPlaylists.map((playlist) => `<button class="chip" data-pl="${escapeHtml(playlist.id)}" aria-pressed="${selectedPlaylist?.id === playlist.id}">${escapeHtml(playlist.title)} · ${playlist.items.length}</button>`).join("")}</div>` : ""}
-    ${musicBody}
-    <div class="cols">
-      <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.profile.journey)}</span><span>${places.size} ${escapeHtml(copy.profile.places)}</span></h3>
-        ${artist.story ? `<p class="lead">${escapeHtml(artist.story)}</p>` : ""}
-        <ol class="journey">${[...places.entries()].map(([place, records]) => `<li><b>${escapeHtml(place)}</b><span class="note">${records.map((release) => escapeHtml(release.title)).join(" · ")}</span></li>`).join("") || `<li class="note">${escapeHtml(copy.profile.placesAppear)}</li>`}</ol></section>
-      <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.profile.lookingFor)}</span><span>${calls.length} ${escapeHtml(copy.profile.calls)}</span></h3><p class="lead">${escapeHtml(artist.looking_for ?? "")}</p>
-        ${artist.contact ? `<p class="note">${escapeHtml(copy.profile.reachOut)} <strong>${escapeHtml(artist.contact)}</strong></p>` : ""}
-        ${calls.map((call) => `<div><b>${escapeHtml(call.title)}</b><br><span class="note">${escapeHtml(copy.profile.needs)} ${(call.need ?? []).map(escapeHtml).join(", ")}</span></div>`).join("")}</section>
+    <div class="stack profile-works">
+      ${workSection(copy.profile.djSets, profileWorks("dj"), copy.profile.nothingYet)}
+      ${workSection(copy.profile.productions, profileWorks("production"), copy.profile.nothingYet)}
+      ${workSection(copy.profile.unleashed, profileWorks("unleashed"), copy.profile.firstUnleash, true)}
     </div></div>`;
+}
+
+function contributionHref(): string {
+  return `${location.pathname}?downloadable=1#library`;
 }
 
 function channelView(): string {
   const artist = staticArtist("bonhomme") ?? artists[0];
   const intro = site.intro ? `<p class="intro">${escapeHtml(site.intro)}</p>` : "";
-  return artist ? `${intro}${profile(artist, true)}` : `<div class="empty">${escapeHtml(copy.profile.noProfile)}</div>`;
+  if (!artist) return `<div class="empty">${escapeHtml(copy.profile.noProfile)}</div>`;
+  const latest = releases.find((release) => /dj mix|dj set|live set|track/i.test(release.type) && Boolean(embed(release.url ?? "")));
+  const latestPlayer = latest
+    ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title)}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.contribute)}</a></div></div></section>`
+    : `<div class="empty">${escapeHtml(copy.profile.noMusic)}</div>`;
+  const newest = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).slice(0, 4);
+  const openCalls = collabs.filter((call) => (call.status ?? "").toLowerCase() === "open");
+  const callsMarkup = openCalls.map((call) => {
+    const callArtist = staticArtist(call.by);
+    return `<article class="card"><span class="k">${escapeHtml(call.date ?? "")}</span><h4>${escapeHtml(call.title)}</h4><p>${escapeHtml(call.text ?? call.have ?? "")}</p>${callArtist ? unleashButton(callArtist) : ""}<a class="btn" href="#collab">${escapeHtml(copy.collab.openAll)}</a></article>`;
+  }).join("");
+  return `${intro}<div class="stack channel-content">${latestPlayer}
+    <div class="stack home-works">${workSection(copy.channel.djSets, newest("dj"), copy.profile.nothingYet)}${workSection(copy.channel.productions, newest("production"), copy.profile.nothingYet)}${workSection(copy.channel.unleashed, newest("unleashed"), copy.profile.firstUnleash, true)}</div>
+    <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.openCalls)}</span><a href="#collab">${escapeHtml(copy.collab.openAll)}</a></h3><div class="cards">${callsMarkup || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></section>
+    <p class="note channel-meaning">${escapeHtml(copy.channel.meaning)} <a href="#artist-bonhomme">${escapeHtml(copy.channel.readProfile)}</a></p>
+  </div>`;
 }
 
 function libraryView(): string {
   const types = [copy.library.all, ...new Set(releases.map((release) => release.type))];
   const query = searchQuery.toLowerCase();
+  const downloadableOnly = new URLSearchParams(location.search).get("downloadable") === "1";
   const list = releases.filter((release) => (typeFilter === copy.library.all || release.type === typeFilter)
+    && (!downloadableOnly || Boolean(safeUrl(release.download)))
     && (!query || [release.title, release.genre, release.bpm, release.alias, release.mood, release.place, ...(release.artists ?? []).map(artistName)]
       .join(" ").toLowerCase().includes(query)));
   return `<div class="stack"><h2 class="h">${escapeHtml(copy.library.title)}</h2><p class="note">${escapeHtml(copy.library.description)}</p>
     <div class="tools"><input type="search" id="q" placeholder="${escapeHtml(copy.library.search)}" value="${escapeHtml(searchQuery)}" aria-label="${escapeHtml(copy.library.search)}">${types.map((type) => `<button class="chip" data-t="${escapeHtml(type)}" aria-pressed="${type === typeFilter}">${escapeHtml(type)}</button>`).join("")}</div>
-    <div class="list">${list.map((release) => releaseRow(release)).join("") || `<div class="empty">${escapeHtml(list.length ? copy.library.noResults : copy.library.empty)}</div>`}</div></div>`;
+    ${downloadableOnly ? `<p class="note">${escapeHtml(copy.library.downloadableOnly)}</p>` : ""}
+    <div class="list">${list.map((release) => releaseRow(release)).join("") || `<div class="empty">${escapeHtml(downloadableOnly ? copy.library.noDownloadable : list.length ? copy.library.noResults : copy.library.empty)}</div>`}</div></div>`;
 }
 
 function artistsView(liveArtists: Artist[]): string {
@@ -512,14 +567,19 @@ function artistsView(liveArtists: Artist[]): string {
 
 function collabView(): string {
   const repo = site.repo || "theoriginalbonhomme/theoriginalbonhomme.github.io";
-  const url = `https://github.com/${repo}/issues/new?template=collab.yml`;
+  const url = `https://github.com/${repo}/issues/new`;
   return `<div class="stack"><div class="mast" style="align-items:center"><h2 class="h">${escapeHtml(copy.collab.title)}</h2><a class="btn uv" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(copy.collab.postCall)}</a></div>
     <p class="note">${escapeHtml(copy.collab.description)}</p>
-    <div class="cards">${collabs.map((collab) => `<article class="card"><span class="k">${escapeHtml(collab.status || copy.collab.statusOpen)} · ${escapeHtml(collab.date ?? "")}</span><h4>${escapeHtml(collab.title)}</h4>
-      <div><span class="k">${escapeHtml(copy.collab.from)}</span><br>${staticArtist(collab.by) ? `<a href="#artist-${encodeURIComponent(collab.by)}">${escapeHtml(artistName(collab.by))}</a>` : escapeHtml(collab.by)}</div>
-      <div><span class="k">${escapeHtml(copy.collab.have)}</span><br>${escapeHtml(collab.have ?? "")}</div>
-      <div><span class="k">${escapeHtml(copy.collab.needs)}</span><div class="roles" style="margin-top:4px">${(collab.need ?? []).map((need) => `<span class="role">${escapeHtml(need)}</span>`).join("")}</div></div>
-      ${safeUrl(collab.link) ? `<div><a class="btn" href="${escapeHtml(safeUrl(collab.link))}" target="_blank" rel="noopener">${escapeHtml(copy.collab.hear)}</a></div>` : ""}</article>`).join("") || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></div>`;
+    <div class="cards">${collabs.map((call) => {
+      const callArtist = staticArtist(call.by);
+      return `<article class="card"><span class="k">${escapeHtml(call.status || copy.collab.statusOpen)} · ${escapeHtml(call.date ?? "")}</span><h4>${escapeHtml(call.title)}</h4>
+        <div><span class="k">${escapeHtml(copy.collab.from)}</span><br>${callArtist ? `<a href="#artist-${encodeURIComponent(call.by)}">${escapeHtml(callArtist.name)}</a>` : escapeHtml(call.by)}</div>
+        <div><span class="k">${escapeHtml(copy.collab.have)}</span><br>${escapeHtml(call.have ?? "")}</div>
+        <div><span class="k">${escapeHtml(copy.collab.needs)}</span><div class="roles" style="margin-top:4px">${(call.need ?? []).map((need) => `<span class="role">${escapeHtml(need)}</span>`).join("")}</div></div>
+        ${call.text ? `<p>${escapeHtml(call.text)}</p>` : ""}
+        ${callArtist ? unleashButton(callArtist) : ""}
+        ${safeUrl(call.link) ? `<div><a class="btn" href="${escapeHtml(safeUrl(call.link))}" target="_blank" rel="noopener">${escapeHtml(copy.collab.hear)}</a></div>` : ""}</article>`;
+    }).join("") || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></div>`;
 }
 
 function joinViewMarkup(): string {
@@ -528,18 +588,18 @@ function joinViewMarkup(): string {
     <div class="steps">
       <div class="step"><b>${escapeHtml(copy.join.apply)}</b><span>${escapeHtml(copy.join.applyText)}</span><span class="note">${escapeHtml(copy.join.inviteOnly)}</span></div>
       <div class="step"><b>${escapeHtml(copy.join.signIn)}</b><span>${escapeHtml(copy.join.signInText)}</span><div id="join-panel"><p class="note">${escapeHtml(copy.brand.loading)}</p></div></div>
-      <div class="step"><b>${escapeHtml(copy.join.getApproved)}</b><span>${escapeHtml(copy.join.approvedText)}</span></div>
+      <div class="step"><b>${escapeHtml(copy.join.verifyIntention)}</b><span>${escapeHtml(copy.join.verifyIntentionText)}</span></div>
       <div class="step"><b>${escapeHtml(copy.join.makeThings)}</b><span>${escapeHtml(copy.join.makeText)}</span></div>
     </div>
     <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.brand.supportLabel)}</span><span>${escapeHtml(copy.contribution.optional)}</span></h3>
-      <p class="note">${safeUrl(site.support_url) ? `<a class="btn uv" href="${escapeHtml(safeUrl(site.support_url))}" target="_blank" rel="noopener">${escapeHtml(copy.brand.supportLabel)}</a>` : escapeHtml(site.support_note || copy.contribution.comingSoon)}</p>
+      <p class="note"><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.brand.supportLabel)}</a></p>
     </section></div>`;
 }
 
 function artistView(slug: string, liveArtists: Artist[]): string {
   const artist = staticArtist(slug) ?? liveArtists.find((candidate) => candidate.slug === slug);
   return artist
-    ? profile(artist, false)
+    ? profile(artist)
     : `<div class="empty">${escapeHtml(copy.artists.notLive)} <a href="#artists">${escapeHtml(copy.artists.allArtists)}</a>.</div>`;
 }
 
@@ -560,7 +620,7 @@ async function getLiveProfiles(): Promise<Artist[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,slug,name,roles,location,bio,looking_for,links,contact,photo_path,status,invited_by,created_at")
+    .select("id,slug,name,roles,location,bio,offers,looking_for,creates,links,contact,photo_path,status,invited_by,created_at")
     .eq("status", "live")
     .order("name");
   if (error) {
@@ -571,14 +631,13 @@ async function getLiveProfiles(): Promise<Artist[]> {
   const inviterIds = [...new Set(rows.map((row) => row.invited_by).filter((id): id is string => Boolean(id)))];
   const inviters = new Map<string, { name: string; slug: string }>();
   if (inviterIds.length) {
-    const { data: inviterRows, error: inviterError } = await supabase
-      .from("profiles")
-      .select("id,name,slug")
-      .in("id", inviterIds);
+    const { data: inviterRows, error: inviterError } = await supabase.rpc("get_live_profile_inviters", {
+      p_profile_ids: rows.filter((row) => Boolean(row.invited_by)).map((row) => row.id),
+    });
     if (inviterError) {
       showToast(`${copy.messages.loadProfilesError} ${inviterError.message}`);
     } else {
-      (inviterRows ?? []).forEach((row) => inviters.set(row.id, { name: row.name, slug: row.slug }));
+      (inviterRows ?? []).forEach((row) => inviters.set(row.profile_id, { name: row.inviter_name, slug: row.inviter_slug }));
     }
   }
   return rows.map((row) => ({
@@ -587,11 +646,13 @@ async function getLiveProfiles(): Promise<Artist[]> {
     roles: row.roles,
     based: row.location,
     bio: row.bio,
+    offers: row.offers,
     looking_for: row.looking_for,
+    creates: row.creates,
     links: row.links,
     contact: row.contact,
     photo: row.photo_path ?? undefined,
-    open_to_collab: true,
+    open_to_unleash: true,
     invited_by: row.invited_by,
     inviter: row.invited_by ? inviters.get(row.invited_by) ?? null : null,
   }));
@@ -670,7 +731,7 @@ async function loadCuratorDesk(currentUserId: string): Promise<string> {
   if (!admin) return "";
 
   const [{ data: profileRows, error: profileError }, { data: inviteRows, error: inviteError }] = await Promise.all([
-    supabase.from("profiles").select("*").order("created_at"),
+    supabase.from("profiles").select("id,slug,name,roles,location,bio,offers,looking_for,creates,links,contact,photo_path,status,invited_by,created_at").order("created_at"),
     supabase.from("invites").select("*").order("created_at"),
   ]);
   if (profileError) throw new Error(`${copy.messages.loadProfilesError} ${profileError.message}`);
@@ -680,8 +741,13 @@ async function loadCuratorDesk(currentUserId: string): Promise<string> {
   const allInvites = inviteRows ?? [];
   const names = new Map(allProfiles.map((profile) => [profile.id, profile.name]));
   const pending = allProfiles.filter((profile) => profile.status === "pending");
+  const { data: intentions, error: intentionError } = await supabase.rpc("get_profile_intentions", {
+    p_profile_ids: pending.map((profile) => profile.id),
+  });
+  if (intentionError) throw new Error(`${copy.messages.intentionLoadError} ${intentionError.message}`);
+  const intentionByProfile = new Map((intentions ?? []).map((item) => [item.profile_id, item.intention]));
   return `<section id="curator-desk" class="stack"><h3 class="crate"><span>${escapeHtml(copy.join.curatorDesk)}</span><span>${escapeHtml(copy.join.pendingApplications)}</span></h3>
-    ${pending.length ? pending.map((profile) => `<article class="card pending-card" style="margin:10px 0"><span class="k">${escapeHtml(new Date(profile.created_at).toLocaleDateString())}</span><h4>${escapeHtml(profile.name)}</h4><span class="note">${escapeHtml(profile.roles.join(" · "))}${profile.location ? ` · ${escapeHtml(profile.location)}` : ""}</span><p class="lead">${escapeHtml(profile.bio)}</p>${profile.invited_by ? `<p class="note">${escapeHtml(copy.profile.invitedBy)} ${escapeHtml(names.get(profile.invited_by) ?? "")}</p>` : ""}<div class="links"><button class="btn uv" type="button" data-review="approve" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.approve)}</button><button class="btn" type="button" data-review="decline" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.decline)}</button></div></article>`).join("") : `<p class="note">${escapeHtml(copy.join.noPending)}</p>`}
+    ${pending.length ? pending.map((profile) => `<article class="card pending-card" style="margin:10px 0"><span class="k">${escapeHtml(new Date(profile.created_at).toLocaleDateString())}</span><h4>${escapeHtml(profile.name)}</h4><span class="note">${escapeHtml(profile.roles.join(" · "))}${profile.location ? ` · ${escapeHtml(profile.location)}` : ""}</span><p class="lead">${escapeHtml(profile.bio)}</p><section class="stack"><h3 class="crate"><span>${escapeHtml(copy.join.intention)}</span></h3>${textBlocks(intentionByProfile.get(profile.id))}</section>${profile.invited_by ? `<p class="note">${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(allProfiles.find((inviter) => inviter.id === profile.invited_by)?.slug ?? "")}">${escapeHtml(names.get(profile.invited_by) ?? "")}</a></p>` : ""}<div class="links"><button class="btn uv" type="button" data-review="approve" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.approve)}</button><button class="btn" type="button" data-review="veto" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.veto)}</button></div></article>`).join("") : `<p class="note">${escapeHtml(copy.join.noPending)}</p>`}
     <details><summary class="k">${escapeHtml(copy.join.fullInviteTree)}</summary><ul class="journey">${allProfiles.map((profile) => `<li><b>${escapeHtml(profile.name)}</b><span class="note">${profile.invited_by ? `${escapeHtml(copy.profile.invitedBy)} ${escapeHtml(names.get(profile.invited_by) ?? "")}` : ""}${allInvites.filter((invite) => invite.created_by === profile.id).map((invite) => `<br>${escapeHtml(invite.email)} · ${escapeHtml(invite.used_by ? copy.join.used : copy.join.unused)} · ${escapeHtml(copy.join.inviteExpires)} ${escapeHtml(new Date(invite.expires_at).toLocaleDateString())}`).join("")}</span></li>`).join("") || `<li class="note">${escapeHtml(copy.join.noPending)}</li>`}</ul></details><p id="review-message" aria-live="polite"></p></section>`;
 }
 
@@ -739,7 +805,7 @@ async function joinPage(): Promise<void> {
 
   const { data: ownProfile, error: ownProfileError } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id,slug,name,roles,location,bio,offers,looking_for,creates,links,contact,photo_path,status,invited_by,created_at")
     .eq("id", user.id)
     .maybeSingle();
   if (ownProfileError) {
@@ -820,7 +886,10 @@ async function joinPage(): Promise<void> {
     <label for="profile-roles">${escapeHtml(copy.join.roles)}</label><input id="profile-roles" name="roles" maxlength="240" required><span class="note">${escapeHtml(copy.join.rolesHint)}</span>
     <label for="profile-location">${escapeHtml(copy.join.location)}</label><input id="profile-location" name="location" maxlength="120">
     <label for="profile-bio">${escapeHtml(copy.join.bio)}</label><textarea id="profile-bio" name="bio" rows="4" maxlength="1500"></textarea>
-    <label for="profile-looking-for">${escapeHtml(copy.join.lookingFor)}</label><textarea id="profile-looking-for" name="looking_for" rows="3" maxlength="600"></textarea>
+    <label for="profile-offers">${escapeHtml(copy.join.offers)}</label><textarea id="profile-offers" name="offers" rows="4" maxlength="1500"></textarea><span class="note">${escapeHtml(copy.join.offersHelp)}</span>
+    <label for="profile-looking-for">${escapeHtml(copy.join.lookingFor)}</label><textarea id="profile-looking-for" name="looking_for" rows="4" maxlength="1500"></textarea><span class="note">${escapeHtml(copy.join.lookingForHelp)}</span>
+    <label for="profile-creates">${escapeHtml(copy.join.creates)}</label><textarea id="profile-creates" name="creates" rows="4" maxlength="1500"></textarea><span class="note">${escapeHtml(copy.join.createsHelp)}</span>
+    <label for="profile-intention">${escapeHtml(copy.join.intention)}</label><textarea id="profile-intention" name="intention" rows="3" maxlength="1000" required></textarea><span class="note">${escapeHtml(copy.join.intentionHelp)}</span>
     <label for="profile-links">${escapeHtml(copy.join.links)}</label><input id="profile-links" name="links" placeholder="https://example.com"><span class="note">${escapeHtml(copy.join.linksHint)}</span>
     <label for="profile-contact">${escapeHtml(copy.join.contact)}</label><input id="profile-contact" name="contact" maxlength="200">
     <button class="btn uv" type="submit">${escapeHtml(copy.join.submitProfile)}</button><p id="profile-message" aria-live="polite"></p></form>`;
@@ -835,6 +904,11 @@ async function joinPage(): Promise<void> {
       setMessage(message, copy.join.linksHint, "error");
       return;
     }
+    const intention = String(values.get("intention") ?? "").trim();
+    if (!intention) {
+      setMessage(message, copy.messages.intentionRequired, "error");
+      return;
+    }
     if (submit) submit.disabled = true;
     const { error } = await supabase.rpc("submit_invited_profile", {
       p_code: code,
@@ -843,7 +917,10 @@ async function joinPage(): Promise<void> {
       p_roles: String(values.get("roles") ?? "").split(",").map((item) => item.trim()).filter(Boolean),
       p_location: String(values.get("location") ?? "").trim(),
       p_bio: String(values.get("bio") ?? "").trim(),
+      p_offers: String(values.get("offers") ?? "").trim(),
       p_looking_for: String(values.get("looking_for") ?? "").trim(),
+      p_creates: String(values.get("creates") ?? "").trim(),
+      p_intention: intention,
       p_links: links,
       p_contact: String(values.get("contact") ?? "").trim(),
       p_photo_path: null,
