@@ -7,7 +7,7 @@ The existing visual identity and data-backed Channel, Library, Artists, Unleash 
 ## Local development
 
 1. Install Node.js 22 or newer, then run `npm ci`.
-2. Create a Supabase project and run the SQL in `supabase/migrations/20261021000000_phase1.sql`, followed by `supabase/migrations/20261022000000_phase1_profile_fields.sql`.
+2. Create a Supabase project and run these files in the Supabase SQL Editor, in order: `supabase/migrations/20261021000000_phase1.sql`, `supabase/migrations/20261022000000_phase1_profile_fields.sql`, then `supabase/migrations/20261023000000_subscribers.sql`.
 3. Put `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in a local `.env` file.
 4. In Supabase Auth, enable email sign-in, set the Site URL to `https://theoriginalbonhomme.github.io/unleashed/`, and allow redirects to `https://theoriginalbonhomme.github.io/unleashed/**` and `http://localhost:5173/unleashed/**`.
 5. Run `npm run dev`. Run `npm run build` to type-check and create `dist/`.
@@ -16,7 +16,7 @@ Sign-in uses email magic links only. Invitees must use the address that received
 
 ## First Curator setup
 
-After applying both migrations, create your account under **Authentication → Users** in Supabase. Open **SQL Editor**, paste the contents of `supabase/seed/bonhomme.sql`, replace its single `YOUR_EMAIL_HERE` placeholder with the same account email, and run it. This browser-only seed reads the existing account, inserts or updates BONHOMME's live profile and grants that account the Curator role. It does not need Terminal or a service-role key.
+After applying all three migrations, create your account under **Authentication → Users** in Supabase. Open **SQL Editor**, paste the contents of `supabase/seed/bonhomme.sql`, replace its single `YOUR_EMAIL_HERE` placeholder with the same account email, and run it. This browser-only seed reads the existing account, inserts or updates BONHOMME's live profile and grants that account the Curator role. It does not need Terminal or a service-role key.
 
 ## GitHub Pages
 
