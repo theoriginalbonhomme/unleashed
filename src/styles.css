@@ -51,6 +51,7 @@ h3.crate.accent-label{color:var(--tq-text)}
 .list{display:grid}
 .rel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}
 .rel .t{font-weight:600;font-size:16px;min-width:0;overflow-wrap:anywhere}
+.rel .description{margin:0;grid-column:1;font-size:13px;color:var(--dim)}
 .rel .m{font:400 12px var(--mono);color:var(--dim);display:flex;flex-wrap:wrap;gap:4px 12px;font-variant-numeric:tabular-nums}
 .rel .acts{display:flex;gap:6px;grid-row:span 2;align-self:center;flex-wrap:wrap;justify-content:flex-end}
 .rel .slot{grid-column:1/-1}

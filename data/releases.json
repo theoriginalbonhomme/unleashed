@@ -1,5 +1,32 @@
 [
   {
+    "id": "kawo",
+    "title": "KAWO",
+    "artists": [
+      "bonhomme"
+    ],
+    "credits": [
+      {
+        "name": "iLLEGAL P",
+        "role": "Producer",
+        "profile": null
+      }
+    ],
+    "alias": "",
+    "type": "Collab",
+    "date": "2026-10-21",
+    "length": "",
+    "bpm": "117",
+    "key": "A minor",
+    "genre": "Afro House",
+    "description": "The future sound of Africa.",
+    "url": "https://soundcloud.com/bonhommethedj/kawo/s-SjheeVWGkRZ",
+    "download": "",
+    "original_lost": false,
+    "mood": "",
+    "place": "Buffalo Kingdom studio, near Kampala"
+  },
+  {
     "id": "smoothsession-141026-kampala",
     "title": "smoothsession 14.10.26 @ Kampala",
     "artists": [
