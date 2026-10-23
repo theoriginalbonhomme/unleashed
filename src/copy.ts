@@ -234,6 +234,7 @@ export const copy = {
     intentionRequired: "Tell the Curator why you make music and what you want to unleash.",
     subscriberSubmitError: "Could not save your email.",
     subscriberLoadError: "Could not load subscribers.",
+    magicLinkExpired: "This sign-in link has expired. Request a new one.",
   },
   channel: {
     latestWork: "Latest DJ set or track",

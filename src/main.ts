@@ -195,7 +195,7 @@ const collabs = collabData as Collab[];
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase: SupabaseClient<Database> | null = supabaseUrl && supabaseAnonKey
-  ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey, { auth: { detectSessionInUrl: false } })
   : null;
 
 let typeFilter: string = copy.library.all;
@@ -203,6 +203,8 @@ let roleFilter: string = copy.artists.all;
 let searchQuery = "";
 let playlistFilter: string = copy.artists.all;
 let toastTimer: number | undefined;
+let authCallbackMessage = "";
+const pendingInviteKey = "unleashed.pending-invite";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -325,8 +327,14 @@ async function updateAccountHeader(): Promise<void> {
     showToast(`${copy.messages.curatorCheckError} ${adminError.message}`);
   }
   const name = profile?.name || user.email || copy.brand.signedIn;
-  accountArea.innerHTML = `<details class="account-menu"><summary>${escapeHtml(name)}</summary><div class="account-menu-items">
-    <a href="${profile?.status === "live" && profile.slug ? `#artist-${encodeURIComponent(profile.slug)}` : "#join"}">${escapeHtml(copy.brand.myProfile)}</a>
+  const pendingInvite = !profile ? sessionStorage.getItem(pendingInviteKey) : null;
+  const myProfileHref = profile?.status === "live" && profile.slug
+    ? `#artist-${encodeURIComponent(profile.slug)}`
+    : pendingInvite
+      ? `${import.meta.env.BASE_URL}?invite=${encodeURIComponent(pendingInvite)}#join`
+      : "#join";
+  accountArea.innerHTML = `<details class="account-menu"><summary>${escapeHtml(copy.join.signedInAs)} ${escapeHtml(name)}</summary><div class="account-menu-items">
+    <a href="${escapeHtml(myProfileHref)}">${escapeHtml(copy.brand.myProfile)}</a>
     ${admin ? `<a href="#curator">${escapeHtml(copy.brand.curatorDesk)}</a>` : ""}
     <button type="button" class="account-sign-out">${escapeHtml(copy.brand.signOut)}</button>
   </div></details>`;
@@ -734,7 +742,7 @@ function wireSignInForm(): void {
     const email = String(new FormData(form).get("email") ?? "").trim();
     const submit = form.querySelector<HTMLButtonElement>("button[type=submit]");
     if (submit) submit.disabled = true;
-    const redirect = `${location.origin}${location.pathname}#channel`;
+    const redirect = new URL(import.meta.env.BASE_URL, location.origin).href;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirect, shouldCreateUser: false },
@@ -1107,6 +1115,7 @@ async function joinPage(): Promise<void> {
 }
 
 async function render(): Promise<void> {
+  document.querySelector("#auth-callback-message")?.remove();
   const route = routeName();
   document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((link) => {
     const target = route.view === "artist" ? "artists" : route.view;
@@ -1149,8 +1158,63 @@ async function render(): Promise<void> {
   }
 }
 
+function parseAuthCallback(): URLSearchParams {
+  const params = new URLSearchParams();
+  const normalizedHash = location.hash.slice(1).replace(
+    /%23(?=(?:access_token|refresh_token|error|error_description|error_code)=)/gi,
+    "#",
+  );
+  const hashParts = normalizedHash.split("#");
+  hashParts.forEach((part) => {
+    const segment = new URLSearchParams(part);
+    segment.forEach((value, key) => params.set(key, value));
+  });
+  return params;
+}
+
+async function startApp(): Promise<void> {
+  const callback = parseAuthCallback();
+  const hasAuthCallback = ["access_token", "refresh_token", "error", "error_description", "error_code"]
+    .some((key) => callback.has(key));
+  if (hasAuthCallback) {
+    const accessToken = callback.get("access_token");
+    const refreshToken = callback.get("refresh_token");
+    const invite = new URLSearchParams(location.search).get("invite");
+    if (invite) sessionStorage.setItem(pendingInviteKey, invite);
+    try {
+      if (accessToken && refreshToken && supabase) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) authCallbackMessage = callback.get("error_description") || error.message;
+      } else if (callback.has("error")) {
+        authCallbackMessage = callback.get("error_description") || copy.messages.magicLinkExpired;
+      } else if (accessToken || refreshToken) {
+        authCallbackMessage = copy.messages.configMissing;
+      }
+    } catch {
+      authCallbackMessage = callback.get("error_description") || copy.messages.magicLinkExpired;
+    } finally {
+      const cleanUrl = new URL(import.meta.env.BASE_URL, location.origin);
+      cleanUrl.hash = "#channel";
+      history.replaceState(null, document.title, cleanUrl.href);
+    }
+  }
+
+  await updateAccountHeader();
+  await render();
+  if (authCallbackMessage) {
+    const message = document.createElement("p");
+    message.id = "auth-callback-message";
+    message.className = "notice";
+    message.setAttribute("role", "status");
+    message.textContent = authCallbackMessage;
+    appView.prepend(message);
+  }
+}
+
 initialiseShell();
-void updateAccountHeader();
 supabase?.auth.onAuthStateChange(() => {
   window.setTimeout(() => void updateAccountHeader(), 0);
 });
@@ -1158,4 +1222,4 @@ window.addEventListener("hashchange", () => {
   playlistFilter = copy.artists.all;
   void render().then(() => window.scrollTo(0, 0));
 });
-void render();
+void startApp();
