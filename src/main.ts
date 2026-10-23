@@ -37,12 +37,15 @@ type Release = {
   id: string;
   title: string;
   artists?: string[];
+  credits?: { name: string; role: string; profile: string | null }[];
   alias?: string;
   type: string;
   date?: string;
   length?: string;
   bpm?: string;
+  key?: string;
   genre?: string;
+  description?: string;
   url?: string;
   download?: string;
   original_lost?: boolean;
@@ -391,12 +394,22 @@ function embed(value: string): string {
 }
 
 function credits(release: Release): string {
-  return (release.artists ?? []).map((slug) => {
+  const artistsMarkup = (release.artists ?? []).map((slug) => {
     const href = `#artist-${encodeURIComponent(slug)}`;
     return staticArtist(slug)
       ? `<a href="${escapeHtml(href)}">${escapeHtml(artistName(slug))}</a>`
       : escapeHtml(slug);
-  }).join(" × ");
+  });
+  const artistNames = new Set((release.artists ?? []).map(artistName));
+  const creditsMarkup = (release.credits ?? [])
+    .filter((credit) => !artistNames.has(credit.name))
+    .map((credit) => {
+      const artist = credit.profile ? staticArtist(credit.profile) : undefined;
+      return artist
+        ? `<a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(credit.name)}</a>`
+        : escapeHtml(credit.name);
+    });
+  return [...artistsMarkup, ...creditsMarkup].join(" × ");
 }
 
 function releaseRow(release: Release, showArtists = true): string {
@@ -405,10 +418,11 @@ function releaseRow(release: Release, showArtists = true): string {
   const kind = url ? platform(url) : "";
   const canPlay = Boolean(url && embed(url));
   const metadata = [
-    `<span class="type">${escapeHtml(/collab/i.test(release.type) ? copy.profile.unleashed : release.type)}</span>`,
+    `<span class="type">${escapeHtml(release.type)}</span>`,
     showArtists ? `<span>${credits(release)}</span>` : "",
     release.alias ? `<span>${escapeHtml(copy.profile.as)} ${escapeHtml(release.alias)}</span>` : "",
     release.bpm ? `<span>${escapeHtml(release.bpm)} ${escapeHtml(copy.profile.bpm)}</span>` : "",
+    release.key ? `<span>${escapeHtml(release.key)}</span>` : "",
     release.length ? `<span>${escapeHtml(release.length)}</span>` : "",
     release.genre ? `<span>${escapeHtml(release.genre)}</span>` : "",
     release.mood ? `<span class="mood">${escapeHtml(release.mood)}</span>` : "",
@@ -416,7 +430,7 @@ function releaseRow(release: Release, showArtists = true): string {
     release.date ? `<span>${escapeHtml(release.date)}</span>` : "",
     kind ? `<span class="plat">${escapeHtml(kind)}</span>` : "",
   ].filter(Boolean).join("");
-  return `<div class="rel" id="r-${escapeHtml(release.id)}"><div class="t">${escapeHtml(release.title)}</div><div class="acts">
+  return `<div class="rel" id="r-${escapeHtml(release.id)}"><div class="t">${escapeHtml(release.title)}</div>${release.description ? `<p class="description">${escapeHtml(release.description)}</p>` : ""}<div class="acts">
     ${canPlay ? `<button class="btn solid" data-play="${escapeHtml(release.id)}">${escapeHtml(copy.library.play)}</button>` : ""}
     ${url ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(copy.library.open)}</a>` : ""}
     ${download ? `<button class="btn uv" data-give="${escapeHtml(release.id)}">${escapeHtml(copy.library.download)}</button>` : `<span class="btn ghost" title="${escapeHtml(release.original_lost ? copy.library.originalGone : copy.library.noDownload)}">${escapeHtml(copy.library.streamOnly)}</span>`}

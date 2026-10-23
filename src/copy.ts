@@ -112,7 +112,7 @@ export const copy = {
     link: "Link",
     bandcampPlayer: "Bandcamp player",
     everything: "Everything",
-    bpm: "bpm",
+    bpm: "BPM",
     as: "as",
     madeIn: "made in",
     back: "← All artists",
