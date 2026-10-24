@@ -65,6 +65,11 @@ h3.crate.accent-label{color:var(--tq-text)}
 .type{color:var(--tq-text);font-weight:700}
 .slot iframe{width:100%;border:0;display:block;margin-top:8px;background:var(--card)}
 .slot .yt{aspect-ratio:16/9;height:auto;max-width:100%}
+.audio-preview{display:flex;align-items:center;gap:12px;margin-top:8px;padding:8px;background:var(--ink)}
+.audio-preview-label{flex:none;color:var(--bg);font:700 11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.audio-preview audio{display:block;flex:1;min-width:0;accent-color:var(--tq);color-scheme:dark;background:var(--ink)}
+.audio-preview audio::-webkit-media-controls-current-time-display,.audio-preview audio::-webkit-media-controls-time-remaining-display{font-family:var(--mono)}
+.audio-preview audio::-webkit-media-controls-timeline{accent-color:var(--tq)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:26px}
 .cols>*{min-width:0}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}

@@ -47,6 +47,7 @@ type Release = {
   genre?: string;
   description?: string;
   url?: string;
+  audio?: string;
   download?: string;
   original_lost?: boolean;
   mood?: string;
@@ -416,7 +417,11 @@ function releaseRow(release: Release, showArtists = true): string {
   const url = safeUrl(release.url);
   const download = safeUrl(release.download);
   const kind = url ? platform(url) : "";
-  const canPlay = Boolean(url && embed(url));
+  const audioPath = release.audio && /^audio\/[a-z0-9][a-z0-9._-]*$/.test(release.audio)
+    ? release.audio
+    : "";
+  const audioUrl = audioPath ? `${import.meta.env.BASE_URL}${audioPath}` : "";
+  const canPlay = Boolean(audioUrl || (url && embed(url)));
   const metadata = [
     `<span class="type">${escapeHtml(release.type)}</span>`,
     showArtists ? `<span>${credits(release)}</span>` : "",
@@ -432,7 +437,7 @@ function releaseRow(release: Release, showArtists = true): string {
   ].filter(Boolean).join("");
   return `<div class="rel" id="r-${escapeHtml(release.id)}"><div class="t">${escapeHtml(release.title)}</div>${release.description ? `<p class="description">${escapeHtml(release.description)}</p>` : ""}<div class="acts">
     ${canPlay ? `<button class="btn solid" data-play="${escapeHtml(release.id)}">${escapeHtml(copy.library.play)}</button>` : ""}
-    ${url ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(copy.library.open)}</a>` : ""}
+    ${url ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(audioUrl ? copy.library.fullTrack : copy.library.open)}</a>` : ""}
     ${download ? `<button class="btn uv" data-give="${escapeHtml(release.id)}">${escapeHtml(copy.library.download)}</button>` : `<span class="btn ghost" title="${escapeHtml(release.original_lost ? copy.library.originalGone : copy.library.noDownload)}">${escapeHtml(copy.library.streamOnly)}</span>`}
   </div><div class="m">${metadata}</div><div class="slot"></div></div>`;
 }
@@ -453,7 +458,13 @@ function wirePlay(): void {
         slot.innerHTML = "";
         return;
       }
-      slot.innerHTML = embed(release.url ?? "");
+      const audioPath = release.audio && /^audio\/[a-z0-9][a-z0-9._-]*$/.test(release.audio)
+        ? release.audio
+        : "";
+      const audioUrl = audioPath ? `${import.meta.env.BASE_URL}${audioPath}` : "";
+      slot.innerHTML = audioUrl
+        ? `<div class="audio-preview"><span class="audio-preview-label">${escapeHtml(copy.library.preview)}</span><audio controls preload="none" src="${escapeHtml(audioUrl)}">${escapeHtml(copy.library.audioUnsupported)}</audio></div>`
+        : embed(release.url ?? "");
       button.textContent = copy.library.close;
     });
   });
