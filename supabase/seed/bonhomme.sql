@@ -92,5 +92,10 @@ Goals:
   insert into public.roles_admin (user_id)
   values (v_user_id)
   on conflict (user_id) do nothing;
+
+  update public.calls
+  set created_by = v_user_id
+  where id = 'open-call-people-who-breathe-music'
+    and created_by is null;
 end;
 $seed$;

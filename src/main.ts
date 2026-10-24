@@ -66,12 +66,45 @@ type Collab = {
   id: string;
   title: string;
   by: string;
+  ownerId?: string | null;
+  ownerName?: string;
   date?: string;
   have?: string;
   need?: string[];
   text?: string;
   link?: string;
   status?: string;
+};
+
+type CallRow = {
+  id: string;
+  created_by: string | null;
+  title: string;
+  date: string;
+  have: string;
+  need: string[];
+  text: string;
+  link: string;
+  status: string;
+  created_at: string;
+};
+
+type DemoRow = {
+  id: string;
+  call_id: string;
+  name: string;
+  email: string;
+  link: string;
+  message: string;
+  created_at: string;
+  status: "new" | "listened" | "replied";
+};
+
+type MemberSession = {
+  userId: string;
+  name: string;
+  slug: string;
+  isAdmin: boolean;
 };
 
 type ProfileRow = {
@@ -136,6 +169,18 @@ type Database = {
         Row: SubscriberRow;
         Insert: Pick<SubscriberRow, "email">;
         Update: Partial<SubscriberRow>;
+        Relationships: [];
+      };
+      calls: {
+        Row: CallRow;
+        Insert: Partial<CallRow> & Pick<CallRow, "created_by" | "title">;
+        Update: Partial<CallRow>;
+        Relationships: [];
+      };
+      demos: {
+        Row: DemoRow;
+        Insert: Pick<DemoRow, "call_id" | "name" | "email" | "link" | "message">;
+        Update: Pick<DemoRow, "status">;
         Relationships: [];
       };
     };
@@ -283,6 +328,7 @@ function initialiseShell(): void {
   const invitationJoin = document.querySelector<HTMLAnchorElement>("#invitation-join");
   if (invitationJoin) invitationJoin.textContent = copy.brand.join;
   const accountArea = document.querySelector<HTMLElement>("#account-area");
+  setHeaderSignedIn(false);
   if (accountArea) accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
   const browseOldRender = document.querySelector<HTMLAnchorElement>("#browse-old-render");
   if (browseOldRender) {
@@ -301,21 +347,31 @@ function initialiseShell(): void {
   if (loading) loading.textContent = copy.brand.loading;
 }
 
+function setHeaderSignedIn(signedIn: boolean): void {
+  const prompt = document.querySelector<HTMLElement>("#invitation-prompt-text");
+  const join = document.querySelector<HTMLAnchorElement>("#invitation-join");
+  if (prompt) prompt.hidden = signedIn;
+  if (join) join.hidden = signedIn;
+}
+
 async function updateAccountHeader(): Promise<void> {
   const accountArea = document.querySelector<HTMLElement>("#account-area");
   if (!accountArea) return;
   if (!supabase) {
+    setHeaderSignedIn(false);
     accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
     return;
   }
   const { data, error } = await supabase.auth.getSession();
   if (error) {
+    setHeaderSignedIn(false);
     accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
     showToast(`${copy.messages.signInError} ${error.message}`);
     return;
   }
   const user = data.session?.user;
   if (!user) {
+    setHeaderSignedIn(false);
     accountArea.innerHTML = ` · <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>`;
     return;
   }
@@ -330,6 +386,7 @@ async function updateAccountHeader(): Promise<void> {
   if (adminError) {
     showToast(`${copy.messages.curatorCheckError} ${adminError.message}`);
   }
+  setHeaderSignedIn(true);
   const name = profile?.name || user.email || copy.brand.signedIn;
   const pendingInvite = !profile ? sessionStorage.getItem(pendingInviteKey) : null;
   const myProfileHref = profile?.status === "live" && profile.slug
@@ -337,7 +394,7 @@ async function updateAccountHeader(): Promise<void> {
     : pendingInvite
       ? `${import.meta.env.BASE_URL}?invite=${encodeURIComponent(pendingInvite)}#join`
       : "#join";
-  accountArea.innerHTML = `<details class="account-menu"><summary>${escapeHtml(copy.join.signedInAs)} ${escapeHtml(name)}</summary><div class="account-menu-items">
+  accountArea.innerHTML = `<details class="account-menu"><summary>${escapeHtml(copy.join.signedInAs)} ${escapeHtml(name)} <span aria-hidden="true">▾</span></summary><div class="account-menu-items">
     <a href="${escapeHtml(myProfileHref)}">${escapeHtml(copy.brand.myProfile)}</a>
     ${admin ? `<a href="#curator">${escapeHtml(copy.brand.curatorDesk)}</a>` : ""}
     <button type="button" class="account-sign-out">${escapeHtml(copy.brand.signOut)}</button>
@@ -413,9 +470,17 @@ function credits(release: Release): string {
   return [...artistsMarkup, ...creditsMarkup].join(" × ");
 }
 
+function releaseDownloadHref(release: Release): string {
+  if (!release.download) return "";
+  if (/^audio\/[a-z0-9][a-z0-9._-]*$/.test(release.download)) {
+    return `${import.meta.env.BASE_URL}${release.download}`;
+  }
+  return safeUrl(release.download);
+}
+
 function releaseRow(release: Release, showArtists = true): string {
   const url = safeUrl(release.url);
-  const download = safeUrl(release.download);
+  const download = releaseDownloadHref(release);
   const kind = url ? platform(url) : "";
   const audioPath = release.audio && /^audio\/[a-z0-9][a-z0-9._-]*$/.test(release.audio)
     ? release.audio
@@ -438,7 +503,7 @@ function releaseRow(release: Release, showArtists = true): string {
   return `<div class="rel" id="r-${escapeHtml(release.id)}"><div class="t">${escapeHtml(release.title)}</div>${release.description ? `<p class="description">${escapeHtml(release.description)}</p>` : ""}<div class="acts">
     ${canPlay ? `<button class="btn solid" data-play="${escapeHtml(release.id)}">${escapeHtml(copy.library.play)}</button>` : ""}
     ${url ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(audioUrl ? copy.library.fullTrack : copy.library.open)}</a>` : ""}
-    ${download ? `<button class="btn uv" data-give="${escapeHtml(release.id)}">${escapeHtml(copy.library.download)}</button>` : `<span class="btn ghost" title="${escapeHtml(release.original_lost ? copy.library.originalGone : copy.library.noDownload)}">${escapeHtml(copy.library.streamOnly)}</span>`}
+    ${download ? `<button class="btn uv" data-give="${escapeHtml(release.id)}">${escapeHtml(audioUrl ? copy.library.downloadPreview : copy.library.download)}</button>` : `<span class="btn ghost" title="${escapeHtml(release.original_lost ? copy.library.originalGone : copy.library.noDownload)}">${escapeHtml(copy.library.streamOnly)}</span>`}
   </div><div class="m">${metadata}</div><div class="slot"></div></div>`;
 }
 
@@ -476,7 +541,7 @@ function wirePlay(): void {
 function openGive(button: HTMLButtonElement): void {
   const release = releases.find((item) => item.id === button.dataset.give);
   const slot = button.closest(".rel")?.querySelector<HTMLElement>(".slot");
-  const download = safeUrl(release?.download);
+  const download = release ? releaseDownloadHref(release) : "";
   if (!release || !slot || !download) return;
   if (slot.querySelector(".give")) {
     slot.innerHTML = "";
@@ -489,7 +554,7 @@ function openGive(button: HTMLButtonElement): void {
       ["message", copy.exchange.message],
       ["money", copy.exchange.money],
     ].map(([key, label]) => `<button class="chip" type="button" role="radio" aria-checked="false" data-kind="${escapeHtml(key)}">${escapeHtml(label)}</button>`).join("")}</div>
-    <div class="give-in"></div><div><a class="btn uv" hidden href="${escapeHtml(download)}" target="_blank" rel="noopener">${escapeHtml(copy.exchange.download)} ${escapeHtml(release.title)}</a></div></div>`;
+    <div class="give-in"></div>    <div><a class="btn uv" hidden href="${escapeHtml(download)}" target="_blank" rel="noopener"${release.download?.startsWith("audio/") ? " download" : ""}>${escapeHtml(copy.exchange.download)} ${escapeHtml(release.title)}</a></div></div>`;
   const panel = slot.querySelector<HTMLElement>(".give");
   const inputContainer = slot.querySelector<HTMLElement>(".give-in");
   const downloadButton = slot.querySelector<HTMLAnchorElement>("a.btn");
@@ -666,7 +731,252 @@ function wireSubscriberForms(): void {
   });
 }
 
-function channelView(): string {
+function demoStatusLabel(status: DemoRow["status"]): string {
+  return copy.collab.demoStatuses[status];
+}
+
+function demoList(callId: string, demos: DemoRow[]): string {
+  if (!demos.length) return `<section class="demo-list"><h3 class="crate"><span>${escapeHtml(copy.collab.demos)}</span><span>${escapeHtml(copy.collab.zero)}</span></h3><p class="note">${escapeHtml(copy.collab.noDemos)}</p></section>`;
+  return `<section class="demo-list stack"><h3 class="crate"><span>${escapeHtml(copy.collab.demos)}</span><span>${demos.length}</span></h3>
+    ${demos.map((demo) => `<article class="demo-entry">
+      <div class="demo-entry-heading"><b>${escapeHtml(demo.name)}</b><span class="note">${escapeHtml(copy.collab.demoDate)} · ${escapeHtml(new Date(demo.created_at).toLocaleDateString())}</span></div>
+      <a href="${escapeHtml(demo.link)}" target="_blank" rel="noopener">${escapeHtml(demo.link)}</a>
+      ${demo.message ? `<p>${escapeHtml(demo.message)}</p>` : ""}
+      <label class="k" for="demo-status-${escapeHtml(demo.id)}">${escapeHtml(copy.collab.demoStatus)}</label>
+      <select id="demo-status-${escapeHtml(demo.id)}" data-demo-status="${escapeHtml(demo.id)}" data-call-id="${escapeHtml(callId)}">${(["new", "listened", "replied"] as const).map((status) => `<option value="${status}"${demo.status === status ? " selected" : ""}>${escapeHtml(demoStatusLabel(status))}</option>`).join("")}</select>
+    </article>`).join("")}
+  </section>`;
+}
+
+async function currentMember(): Promise<MemberSession | null> {
+  if (!supabase) return null;
+  const { data: session, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    showToast(`${copy.messages.signInError} ${sessionError.message}`);
+    return null;
+  }
+  const user = session.session?.user;
+  if (!user) return null;
+  const [{ data: profile, error: profileError }, { data: admin, error: adminError }] = await Promise.all([
+    supabase.from("profiles").select("name,slug,status").eq("id", user.id).maybeSingle(),
+    supabase.from("roles_admin").select("user_id").eq("user_id", user.id).maybeSingle(),
+  ]);
+  if (profileError) {
+    showToast(`${copy.messages.profileLoadError} ${profileError.message}`);
+    return null;
+  }
+  if (adminError) showToast(`${copy.messages.curatorCheckError} ${adminError.message}`);
+  if (!profile || profile.status !== "live") return null;
+  return { userId: user.id, name: profile.name, slug: profile.slug, isAdmin: Boolean(admin) };
+}
+
+async function loadCalls(): Promise<Collab[]> {
+  if (!supabase) return collabs;
+  const { data: rows, error } = await supabase.from("calls")
+    .select("id,created_by,title,date,have,need,text,link,status,created_at")
+    .order("created_at", { ascending: false });
+  if (error) {
+    showToast(`${copy.collab.callLoadError} ${error.message}`);
+    return collabs;
+  }
+  const ownerIds = [...new Set((rows ?? []).map((row) => row.created_by).filter((id): id is string => Boolean(id)))];
+  const ownerById = new Map<string, { slug: string; name: string }>();
+  if (ownerIds.length) {
+    const { data: owners, error: ownerError } = await supabase.from("profiles").select("id,slug,name").in("id", ownerIds);
+    if (ownerError) showToast(`${copy.messages.loadProfilesError} ${ownerError.message}`);
+    (owners ?? []).forEach((owner) => ownerById.set(owner.id, { slug: owner.slug, name: owner.name }));
+  }
+  const persisted = (rows ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    by: ownerById.get(row.created_by ?? "")?.slug ?? copy.collab.unknownMember,
+    ownerId: row.created_by,
+    ownerName: ownerById.get(row.created_by ?? "")?.name,
+    date: row.date,
+    have: row.have,
+    need: row.need,
+    text: row.text,
+    link: row.link,
+    status: row.status,
+  } satisfies Collab));
+  const persistedIds = new Set(persisted.map((call) => call.id));
+  return [...persisted, ...collabs.filter((call) => !persistedIds.has(call.id))];
+}
+
+async function loadDemos(callIds: string[]): Promise<DemoRow[]> {
+  if (!supabase || !callIds.length) return [];
+  const { data, error } = await supabase.from("demos")
+    .select("id,call_id,name,email,link,message,created_at,status")
+    .in("call_id", callIds)
+    .order("created_at", { ascending: false });
+  if (error) {
+    showToast(`${copy.collab.demoLoadError} ${error.message}`);
+    return [];
+  }
+  return data ?? [];
+}
+
+function callCard(call: Collab, demos: DemoRow[] = [], showDemos = false, showOpenAll = false): string {
+  const callArtist = staticArtist(call.by);
+  const ownerName = callArtist?.name ?? call.ownerName ?? call.by;
+  const ownerLink = callArtist || call.ownerName
+    ? `<a href="#artist-${encodeURIComponent(call.by)}">${escapeHtml(ownerName)}</a>`
+    : escapeHtml(ownerName);
+  const callStatus = (call.status ?? "").toLowerCase() === "closed" ? copy.collab.statusClosed : copy.collab.statusOpen;
+  return `<article class="card"><span class="k">${escapeHtml(callStatus)} · ${escapeHtml(call.date ?? "")}</span><h4>${escapeHtml(call.title)}</h4>
+    <div><span class="k">${escapeHtml(copy.collab.from)}</span><br>${ownerLink}</div>
+    <div><span class="k">${escapeHtml(copy.collab.have)}</span><br>${escapeHtml(call.have ?? "")}</div>
+    <div><span class="k">${escapeHtml(copy.collab.needs)}</span><div class="roles" style="margin-top:4px">${(call.need ?? []).map((need) => `<span class="role">${escapeHtml(need)}</span>`).join("")}</div></div>
+    ${call.text ? `<p>${escapeHtml(call.text)}</p>` : ""}
+    ${safeUrl(call.link) ? `<div><a class="btn" href="${escapeHtml(safeUrl(call.link))}" target="_blank" rel="noopener">${escapeHtml(copy.collab.hear)}</a></div>` : ""}
+    <button class="btn uv" type="button" data-send-demo="${escapeHtml(call.id)}">${escapeHtml(copy.collab.sendDemo)}</button>
+    <div class="demo-form-slot" data-demo-form-slot="${escapeHtml(call.id)}"></div>
+    ${showOpenAll ? `<a class="btn" href="#collab">${escapeHtml(copy.collab.openAll)}</a>` : ""}
+    ${showDemos ? demoList(call.id, demos) : ""}</article>`;
+}
+
+function callFormMarkup(): string {
+  return `<form id="create-call-form" class="stack call-form">
+    <h3 class="crate">${escapeHtml(copy.collab.createRoom)}</h3>
+    <p class="note">${escapeHtml(copy.collab.createRoomHelp)}</p>
+    <label for="call-title">${escapeHtml(copy.collab.callTitle)}</label><input id="call-title" name="title" maxlength="160" required>
+    <label for="call-have">${escapeHtml(copy.collab.callHave)}</label><textarea id="call-have" name="have" maxlength="1000" required></textarea>
+    <label for="call-needs">${escapeHtml(copy.collab.callNeeds)}</label><input id="call-needs" name="need" maxlength="300"><span class="note">${escapeHtml(copy.collab.callNeedsHint)}</span>
+    <label for="call-details">${escapeHtml(copy.collab.callDetails)}</label><textarea id="call-details" name="text" maxlength="1000"></textarea>
+    <label for="call-link">${escapeHtml(copy.collab.callLink)}</label><input id="call-link" name="link" type="url" placeholder="${escapeHtml(copy.collab.httpsPlaceholder)}">
+    <button class="btn uv" type="submit">${escapeHtml(copy.collab.createRoomSubmit)}</button>
+    <p class="call-form-message note" aria-live="polite"></p>
+  </form>`;
+}
+
+function demoFormMarkup(callId: string): string {
+  return `<form class="demo-form stack" data-demo-form="${escapeHtml(callId)}">
+    <label for="demo-name-${escapeHtml(callId)}">${escapeHtml(copy.collab.demoName)}</label><input id="demo-name-${escapeHtml(callId)}" name="name" maxlength="100" autocomplete="name" required>
+    <label for="demo-email-${escapeHtml(callId)}">${escapeHtml(copy.collab.demoEmail)}</label><input id="demo-email-${escapeHtml(callId)}" name="email" type="email" maxlength="254" autocomplete="email" required>
+    <label for="demo-link-${escapeHtml(callId)}">${escapeHtml(copy.collab.demoLink)}</label><input id="demo-link-${escapeHtml(callId)}" name="link" type="url" placeholder="${escapeHtml(copy.collab.httpsPlaceholder)}" required><span class="note">${escapeHtml(copy.collab.demoLinkHint)}</span>
+    <label for="demo-message-${escapeHtml(callId)}">${escapeHtml(copy.collab.demoMessage)}</label><textarea id="demo-message-${escapeHtml(callId)}" name="message" maxlength="500"></textarea>
+    <label class="demo-rights"><input name="rights" type="checkbox" required> <span>${escapeHtml(copy.collab.demoRights)}</span></label>
+    <label class="demo-honeypot" aria-hidden="true">${escapeHtml(copy.collab.demoHoneypot)}<input name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="btn uv" type="submit">${escapeHtml(copy.collab.demoSubmit)}</button>
+    <p class="demo-form-message note" aria-live="polite"></p>
+  </form>`;
+}
+
+function allowedDemoUrl(value: string): string {
+  const url = safeUrl(value.trim());
+  if (!url) return "";
+  const host = new URL(url).hostname.toLowerCase();
+  const allowed = [
+    "soundcloud.com", "mixcloud.com", "youtube.com", "youtu.be",
+    "drive.google.com", "docs.google.com", "dropbox.com", "dropboxusercontent.com",
+    "wetransfer.com", "we.tl",
+  ];
+  return allowed.some((domain) => host === domain || host.endsWith(`.${domain}`)) ? url : "";
+}
+
+function wireCallAndDemoForms(): void {
+  appView.querySelector<HTMLButtonElement>("#show-create-call")?.addEventListener("click", () => {
+    const slot = appView.querySelector<HTMLElement>("#create-call-slot");
+    if (slot) slot.hidden = !slot.hidden;
+  });
+  appView.querySelectorAll<HTMLButtonElement>("[data-send-demo]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const callId = button.dataset.sendDemo ?? "";
+      const slot = appView.querySelector<HTMLElement>(`[data-demo-form-slot="${CSS.escape(callId)}"]`);
+      if (!slot) return;
+      if (slot.firstElementChild) {
+        slot.innerHTML = "";
+        return;
+      }
+      slot.innerHTML = demoFormMarkup(callId);
+      const form = slot.querySelector<HTMLFormElement>("[data-demo-form]");
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!supabase) {
+          setMessage(form.querySelector(".demo-form-message"), copy.messages.configMissing, "error");
+          return;
+        }
+        const values = new FormData(form);
+        const name = String(values.get("name") ?? "").trim();
+        const email = String(values.get("email") ?? "").trim().toLowerCase();
+        const link = allowedDemoUrl(String(values.get("link") ?? ""));
+        const message = String(values.get("message") ?? "").trim();
+        if (!link) {
+          setMessage(form.querySelector(".demo-form-message"), copy.collab.invalidDemoLink, "error");
+          return;
+        }
+        if (!values.has("rights")) {
+          setMessage(form.querySelector(".demo-form-message"), copy.collab.demoAgreementRequired, "error");
+          return;
+        }
+        if (String(values.get("website") ?? "").trim()) {
+          setMessage(form.querySelector(".demo-form-message"), copy.collab.demoSent, "success");
+          form.reset();
+          return;
+        }
+        const submit = form.querySelector<HTMLButtonElement>("button[type=submit]");
+        if (submit) submit.disabled = true;
+        const { error } = await supabase.from("demos").insert({
+          call_id: callId, name, email, link, message,
+        });
+        if (submit) submit.disabled = false;
+        if (error) {
+          setMessage(form.querySelector(".demo-form-message"), `${copy.collab.demoSendError} ${error.message}`, "error");
+          return;
+        }
+        form.reset();
+        setMessage(form.querySelector(".demo-form-message"), copy.collab.demoSent, "success");
+      });
+    });
+  });
+
+  appView.querySelectorAll<HTMLFormElement>("#create-call-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const member = await currentMember();
+      if (!member) return;
+      const values = new FormData(form);
+      const linkValue = String(values.get("link") ?? "").trim();
+      const link = linkValue ? safeUrl(linkValue) : "";
+      if (linkValue && !link) {
+        setMessage(form.querySelector(".call-form-message"), copy.collab.callLinkInvalid, "error");
+        return;
+      }
+      const submit = form.querySelector<HTMLButtonElement>("button[type=submit]");
+      if (submit) submit.disabled = true;
+      const { error } = await supabase!.from("calls").insert({
+        created_by: member.userId,
+        title: String(values.get("title") ?? "").trim(),
+        have: String(values.get("have") ?? "").trim(),
+        need: String(values.get("need") ?? "").split(",").map((item) => item.trim()).filter(Boolean),
+        text: String(values.get("text") ?? "").trim(),
+        link,
+      });
+      if (submit) submit.disabled = false;
+      if (error) {
+        setMessage(form.querySelector(".call-form-message"), `${copy.collab.callCreateError} ${error.message}`, "error");
+        return;
+      }
+      await render();
+    });
+  });
+
+  appView.querySelectorAll<HTMLSelectElement>("[data-demo-status]").forEach((select) => {
+    select.addEventListener("change", async () => {
+      if (!supabase) return;
+      select.disabled = true;
+      const { error } = await supabase.from("demos").update({ status: select.value as DemoRow["status"] }).eq("id", select.dataset.demoStatus ?? "");
+      if (error) {
+        select.disabled = false;
+        showToast(`${copy.collab.demoStatusError} ${error.message}`);
+        return;
+      }
+      select.disabled = false;
+    });
+  });
+}
+
+async function channelView(): Promise<string> {
   const artist = staticArtist("bonhomme") ?? artists[0];
   const intro = site.intro ? `<p class="intro">${escapeHtml(site.intro)}</p>` : "";
   if (!artist) return `<div class="empty">${escapeHtml(copy.profile.noProfile)}</div>`;
@@ -675,11 +985,8 @@ function channelView(): string {
     ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title)}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.browseOldRender)}</a></div></div></section>`
     : `<div class="empty">${escapeHtml(copy.profile.noMusic)}</div>`;
   const newest = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).slice(0, 4);
-  const openCalls = collabs.filter((call) => (call.status ?? "").toLowerCase() === "open");
-  const callsMarkup = openCalls.map((call) => {
-    const callArtist = staticArtist(call.by);
-    return `<article class="card"><span class="k">${escapeHtml(call.date ?? "")}</span><h4>${escapeHtml(call.title)}</h4><p>${escapeHtml(call.text ?? call.have ?? "")}</p>${callArtist ? unleashButton(callArtist) : ""}<a class="btn" href="#collab">${escapeHtml(copy.collab.openAll)}</a></article>`;
-  }).join("");
+  const openCalls = (await loadCalls()).filter((call) => (call.status ?? "").toLowerCase() === "open");
+  const callsMarkup = openCalls.map((call) => callCard(call, [], false, true)).join("");
   return `${intro}<div class="stack channel-content">${latestPlayer}
     <div class="stack home-works">${workSection(copy.channel.djSets, newest("dj"), copy.profile.nothingYet)}${workSection(copy.channel.productions, newest("production"), copy.profile.nothingYet)}${workSection(copy.channel.unleashed, newest("unleashed"), copy.profile.firstUnleash, true)}</div>
     <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.openCalls)}</span><a href="#collab">${escapeHtml(copy.collab.openAll)}</a></h3><div class="cards">${callsMarkup || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></section>
@@ -693,7 +1000,7 @@ function libraryView(): string {
   const query = searchQuery.toLowerCase();
   const downloadableOnly = new URLSearchParams(location.search).get("downloadable") === "1";
   const list = releases.filter((release) => (typeFilter === copy.library.all || release.type === typeFilter)
-    && (!downloadableOnly || Boolean(safeUrl(release.download)))
+    && (!downloadableOnly || Boolean(releaseDownloadHref(release)))
     && (!query || [release.title, release.genre, release.bpm, release.alias, release.mood, release.place, ...(release.artists ?? []).map(artistName)]
       .join(" ").toLowerCase().includes(query)));
   return `<div class="stack"><h2 class="h">${escapeHtml(copy.library.title)}</h2><p class="note">${escapeHtml(copy.library.description)}</p>
@@ -715,20 +1022,26 @@ function artistsView(liveArtists: Artist[]): string {
     <p class="note">${escapeHtml(copy.artists.joinInvite)} <a href="#join">${escapeHtml(copy.artists.apply)}</a>.</p></div>`;
 }
 
-function collabView(): string {
-  const repo = site.repo || "theoriginalbonhomme/theoriginalbonhomme.github.io";
-  const url = `https://github.com/${repo}/issues/new`;
-  return `<div class="stack"><div class="mast" style="align-items:center"><h2 class="h">${escapeHtml(copy.collab.title)}</h2><a class="btn uv" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(copy.collab.postCall)}</a></div>
+async function collabView(): Promise<string> {
+  const member = await currentMember();
+  const calls = await loadCalls();
+  const visibleCalls = member ? calls : calls.filter((call) => (call.status ?? "").toLowerCase() === "open");
+  const demoCallIds = visibleCalls
+    .filter((call) => Boolean(member && (member.isAdmin || call.ownerId === member.userId)))
+    .map((call) => call.id);
+  const demos = await loadDemos(demoCallIds);
+  const demosByCall = new Map<string, DemoRow[]>();
+  demos.forEach((demo) => demosByCall.set(demo.call_id, [...(demosByCall.get(demo.call_id) ?? []), demo]));
+  const createRoom = member
+    ? `<button class="btn uv" type="button" id="show-create-call">${escapeHtml(copy.collab.createRoom)}</button>`
+    : "";
+  const createForm = member ? `<div id="create-call-slot" hidden>${callFormMarkup()}</div>` : "";
+  return `<div class="stack"><div class="mast" style="align-items:center"><h2 class="h">${escapeHtml(copy.collab.title)}</h2>${createRoom}</div>
     <p class="note">${escapeHtml(copy.collab.description)}</p>
-    <div class="cards">${collabs.map((call) => {
-      const callArtist = staticArtist(call.by);
-      return `<article class="card"><span class="k">${escapeHtml(call.status || copy.collab.statusOpen)} · ${escapeHtml(call.date ?? "")}</span><h4>${escapeHtml(call.title)}</h4>
-        <div><span class="k">${escapeHtml(copy.collab.from)}</span><br>${callArtist ? `<a href="#artist-${encodeURIComponent(call.by)}">${escapeHtml(callArtist.name)}</a>` : escapeHtml(call.by)}</div>
-        <div><span class="k">${escapeHtml(copy.collab.have)}</span><br>${escapeHtml(call.have ?? "")}</div>
-        <div><span class="k">${escapeHtml(copy.collab.needs)}</span><div class="roles" style="margin-top:4px">${(call.need ?? []).map((need) => `<span class="role">${escapeHtml(need)}</span>`).join("")}</div></div>
-        ${call.text ? `<p>${escapeHtml(call.text)}</p>` : ""}
-        ${callArtist ? unleashButton(callArtist) : ""}
-        ${safeUrl(call.link) ? `<div><a class="btn" href="${escapeHtml(safeUrl(call.link))}" target="_blank" rel="noopener">${escapeHtml(copy.collab.hear)}</a></div>` : ""}</article>`;
+    ${createForm}
+    <div class="cards">${visibleCalls.map((call) => {
+      const showDemos = Boolean(member && (member.isAdmin || call.ownerId === member.userId));
+      return callCard(call, demosByCall.get(call.id) ?? [], showDemos);
     }).join("") || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></div>`;
 }
 
@@ -917,14 +1230,20 @@ async function loadCuratorDesk(currentUserId: string): Promise<string> {
     { data: profileRows, error: profileError },
     { data: inviteRows, error: inviteError },
     { data: subscriberRows, error: subscriberError },
+    { data: callRows, error: callError },
+    { data: demoRows, error: demoError },
   ] = await Promise.all([
     supabase.from("profiles").select("id,slug,name,roles,location,bio,offers,looking_for,creates,links,contact,photo_path,status,invited_by,created_at").order("created_at"),
     supabase.from("invites").select("*").order("created_at"),
     supabase.from("subscribers").select("id,email,consented_at,unsubscribed_at,created_at").order("created_at"),
+    supabase.from("calls").select("id,created_by,title,date,have,need,text,link,status,created_at").order("created_at", { ascending: false }),
+    supabase.from("demos").select("id,call_id,name,email,link,message,created_at,status").order("created_at", { ascending: false }),
   ]);
   if (profileError) throw new Error(`${copy.messages.loadProfilesError} ${profileError.message}`);
   if (inviteError) throw new Error(`${copy.messages.inviteListError} ${inviteError.message}`);
   if (subscriberError) throw new Error(`${copy.messages.subscriberLoadError} ${subscriberError.message}`);
+  if (callError) throw new Error(`${copy.collab.callLoadError} ${callError.message}`);
+  if (demoError) throw new Error(`${copy.collab.demoLoadError} ${demoError.message}`);
 
   const allProfiles = profileRows ?? [];
   const allInvites = inviteRows ?? [];
@@ -935,13 +1254,18 @@ async function loadCuratorDesk(currentUserId: string): Promise<string> {
   });
   if (intentionError) throw new Error(`${copy.messages.intentionLoadError} ${intentionError.message}`);
   const intentionByProfile = new Map((intentions ?? []).map((item) => [item.profile_id, item.intention]));
+  const demosByCall = new Map<string, DemoRow[]>();
+  (demoRows ?? []).forEach((demo) => demosByCall.set(demo.call_id, [...(demosByCall.get(demo.call_id) ?? []), demo]));
+  const curatorDemos = (callRows ?? []).map((call) => `<article class="demo-call"><h4>${escapeHtml(call.title)}</h4>${demoList(call.id, demosByCall.get(call.id) ?? [])}</article>`).join("")
+    || `<p class="note">${escapeHtml(copy.collab.noDemos)}</p>`;
   return `<section id="curator-desk" class="stack"><h3 class="crate"><span>${escapeHtml(copy.join.curatorDesk)}</span><span>${escapeHtml(copy.join.pendingApplications)}</span></h3>
     ${pending.length ? pending.map((profile) => `<article class="card pending-card" style="margin:10px 0"><span class="k">${escapeHtml(new Date(profile.created_at).toLocaleDateString())}</span><h4>${escapeHtml(profile.name)}</h4><span class="note">${escapeHtml(profile.roles.join(" · "))}${profile.location ? ` · ${escapeHtml(profile.location)}` : ""}</span><p class="lead">${escapeHtml(profile.bio)}</p><section class="stack"><h3 class="crate"><span>${escapeHtml(copy.join.intention)}</span></h3>${textBlocks(intentionByProfile.get(profile.id))}</section>${profile.invited_by ? `<p class="note">${escapeHtml(copy.profile.invitedBy)} <a href="#artist-${encodeURIComponent(allProfiles.find((inviter) => inviter.id === profile.invited_by)?.slug ?? "")}">${escapeHtml(names.get(profile.invited_by) ?? "")}</a></p>` : ""}<div class="links"><button class="btn uv" type="button" data-review="approve" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.approve)}</button><button class="btn" type="button" data-review="veto" data-id="${escapeHtml(profile.id)}">${escapeHtml(copy.join.veto)}</button></div></article>`).join("") : `<p class="note">${escapeHtml(copy.join.noPending)}</p>`}
     <details><summary class="k">${escapeHtml(copy.join.fullInviteTree)}</summary><ul class="journey">${allProfiles.map((profile) => `<li><b>${escapeHtml(profile.name)}</b><span class="note">${profile.invited_by ? `${escapeHtml(copy.profile.invitedBy)} ${escapeHtml(names.get(profile.invited_by) ?? "")}` : ""}${allInvites.filter((invite) => invite.created_by === profile.id).map((invite) => `<br>${escapeHtml(invite.email)} · ${escapeHtml(invite.used_by ? copy.join.used : copy.join.unused)} · ${escapeHtml(copy.join.inviteExpires)} ${escapeHtml(new Date(invite.expires_at).toLocaleDateString())}`).join("")}</span></li>`).join("") || `<li class="note">${escapeHtml(copy.join.noPending)}</li>`}</ul></details>
     <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.subscriber.curatorTitle)}</span><button type="button" class="btn copy-subscriber-emails">${escapeHtml(copy.subscriber.copyAllEmails)}</button></h3>
       <ul class="subscriber-list">${(subscriberRows ?? []).map((subscriber) => `<li>${escapeHtml(subscriber.email)}</li>`).join("") || `<li class="note">${escapeHtml(copy.subscriber.empty)}</li>`}</ul>
       <p id="subscriber-copy-message" aria-live="polite"></p>
-    </section><p id="review-message" aria-live="polite"></p></section>`;
+    </section><section class="stack"><h3 class="crate">${escapeHtml(copy.collab.demos)}</h3>${curatorDemos}</section>
+    <p id="review-message" aria-live="polite"></p></section>`;
 }
 
 async function joinPage(): Promise<void> {
@@ -1036,6 +1360,7 @@ async function joinPage(): Promise<void> {
       const curator = await loadCuratorDesk(user.id);
       if (curator) {
         panel.insertAdjacentHTML("beforeend", curator);
+        wireCallAndDemoForms();
         panel.querySelector<HTMLButtonElement>(".copy-subscriber-emails")?.addEventListener("click", async () => {
           const emails = [...panel.querySelectorAll(".subscriber-list li")]
             .map((item) => item.textContent?.trim() ?? "")
@@ -1157,7 +1482,8 @@ async function render(): Promise<void> {
       wireArtists();
       return;
     case "collab":
-      appView.innerHTML = collabView();
+      appView.innerHTML = await collabView();
+      wireCallAndDemoForms();
       return;
     case "join":
       appView.innerHTML = joinViewMarkup();
@@ -1176,10 +1502,11 @@ async function render(): Promise<void> {
       return;
     case "channel":
     default:
-      appView.innerHTML = channelView();
+      appView.innerHTML = await channelView();
       wireSubscriberForms();
       wireProfile();
       wirePlay();
+      wireCallAndDemoForms();
   }
 }
 
