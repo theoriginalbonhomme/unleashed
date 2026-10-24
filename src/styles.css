@@ -26,7 +26,8 @@ header{display:grid;gap:14px}
 .invitation-prompt a{color:var(--tq-text);font-weight:700}
 #account-area{display:inline-flex;align-items:center}
 .account-menu{position:relative;display:inline-block}
-.account-menu summary{display:inline-block;cursor:pointer;color:var(--tq-text);font-weight:700}
+.account-menu summary{display:inline-block;list-style:none;cursor:pointer;color:var(--tq-text);font-weight:700}
+.account-menu summary::-webkit-details-marker{display:none}
 .account-menu-items{position:absolute;right:0;top:calc(100% + 6px);z-index:4;display:grid;gap:2px;min-width:150px;padding:6px;background:var(--card);border:1px solid var(--line);text-align:left}
 .account-menu-items a,.account-menu-items button{font:400 12px var(--mono);text-align:left;padding:7px 8px;text-decoration:none;color:var(--ink);background:none;border:0;cursor:pointer}
 .account-menu-items a:hover,.account-menu-items button:hover{background:var(--bg)}
@@ -104,6 +105,21 @@ input[type=search]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid
 .subscriber-form .subscriber-consent{display:flex;gap:8px;align-items:flex-start;font-size:13px}
 .subscriber-form .subscriber-consent input{margin:4px 0 0;accent-color:var(--tq);flex:none}
 .subscriber-list{margin:0;padding-left:22px;display:grid;gap:4px;overflow-wrap:anywhere}
+.call-form,.demo-form{max-width:620px;gap:8px;padding:14px;background:var(--card);border:1px solid var(--line)}
+.call-form label,.demo-form>label:not(.demo-rights):not(.demo-honeypot){font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.call-form input,.call-form textarea,.demo-form input:not([type=checkbox]),.demo-form textarea,.demo-form select{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:2px;width:100%}
+.call-form textarea,.demo-form textarea{resize:vertical;min-height:72px}
+.demo-form-slot{min-width:0}
+.demo-rights{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.demo-rights input{margin:4px 0 0;accent-color:var(--tq);flex:none}
+.demo-honeypot{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+.demo-list{border-top:1px solid var(--line);padding-top:10px;min-width:0}
+.demo-entry{display:grid;gap:5px;padding:10px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.demo-entry-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.demo-entry>a{overflow-wrap:anywhere}
+.demo-entry select{font:400 12px var(--mono);padding:6px 8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:2px;max-width:180px}
+.demo-call{border-top:1px solid var(--line);padding-top:12px}
+.demo-call h4{margin:0 0 8px;font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
 .sign-in-view{max-width:440px}
 .sign-in-view label{font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .sign-in-view input[type=email]{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:2px;width:100%}
