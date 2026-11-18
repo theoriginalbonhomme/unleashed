@@ -184,3 +184,28 @@ footer{font:400 12px var(--mono);color:var(--dim);border-top:1px solid var(--lin
 .cities li span{font:400 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .cities li.first{border-top:3px solid var(--yellow)}
 .about-notice{margin:0;font:400 12px var(--mono);color:var(--dim);border:1.5px dashed var(--line);padding:10px 12px;max-width:62ch}
+.next-line{background:var(--yellow);color:var(--on);padding:12px 16px;display:grid;gap:4px}
+.next-line .eyebrow{color:var(--on)}
+.next-line p{margin:0;font-size:16px;line-height:1.4}
+.table-wrap{overflow-x:auto}
+.split-table{width:100%;border-collapse:collapse;font-size:15px}
+.split-table th,.split-table td{text-align:left;padding:8px 10px 8px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+.split-table th{font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.split-table input{font:400 15px var(--body);padding:6px 8px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:2px;width:100%;min-width:70px}
+.split-table tfoot td{border-bottom:0;font-weight:600}
+.split-table .signed{font:700 11px var(--mono);color:var(--tq-text);text-transform:uppercase;letter-spacing:.04em}
+#split-total.ok{color:var(--tq-text)}
+#split-total.off{background:var(--yellow);color:var(--on);padding:0 4px}
+.studio-form{max-width:520px;gap:8px}
+.studio-form label{font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.studio-form input,.studio-form select{font:400 15px var(--body);padding:9px 12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:2px;width:100%}
+.studio-form button{justify-self:start}
+.stages{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.stages li{font:700 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--line);color:var(--dim)}
+.stages li.done{border-color:var(--tq);color:var(--tq-text)}
+.stages li.current{background:var(--tq);border-color:var(--tq);color:var(--on)}
+.room-log{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px}
+.room-log .m{font:400 11px var(--mono);color:var(--dim);margin-right:6px}
+@media (max-width:620px){nav{flex-wrap:wrap}nav a{padding:10px 9px}}
+.room .about-section>.btn{justify-self:start}
+.split-table .signed{white-space:nowrap}
