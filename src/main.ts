@@ -317,7 +317,7 @@ function initialiseShell(): void {
   }
   const byline = document.querySelector<HTMLElement>("#platform-line");
   if (byline) byline.textContent = copy.brand.platform;
-  const navLabels = [copy.brand.channel, copy.brand.library, copy.brand.artists];
+  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists];
   document.querySelectorAll<HTMLElement>("nav a").forEach((link, index) => {
     link.textContent = navLabels[index] ?? "";
   });
@@ -987,12 +987,30 @@ async function channelView(): Promise<string> {
   const newest = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).slice(0, 4);
   const openCalls = (await loadCalls()).filter((call) => (call.status ?? "").toLowerCase() === "open");
   const callsMarkup = openCalls.map((call) => callCard(call, [], false, true)).join("");
-  return `${intro}<div class="stack channel-content">${latestPlayer}
+  const aboutStrip = `<section class="about-strip"><p>${escapeHtml(copy.about.strip)}</p><a class="btn uv" href="#about">${escapeHtml(copy.about.stripLink)}</a></section>`;
+  return `${intro}${aboutStrip}<div class="stack channel-content">${latestPlayer}
     <div class="stack home-works">${workSection(copy.channel.djSets, newest("dj"), copy.profile.nothingYet)}${workSection(copy.channel.productions, newest("production"), copy.profile.nothingYet)}${workSection(copy.channel.unleashed, newest("unleashed"), copy.profile.firstUnleash, true)}</div>
     <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.openCalls)}</span><a href="#collab">${escapeHtml(copy.collab.openAll)}</a></h3><div class="cards">${callsMarkup || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></section>
     ${subscriberForm()}
     <p class="note channel-meaning">${escapeHtml(copy.channel.meaning)} <a href="#artist-bonhomme">${escapeHtml(copy.channel.readProfile)}</a></p>
   </div>`;
+}
+
+function aboutView(): string {
+  const a = copy.about;
+  const section = (eyebrow: string, title: string, body: string) =>
+    `<section class="about-section"><p class="eyebrow">${escapeHtml(eyebrow)}</p><h3 class="about-title">${escapeHtml(title)}</h3>${body}</section>`;
+  const what = section(a.whatEyebrow, a.whatTitle,
+    `<ul class="about-points">${a.whatPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}</ul><p class="note">${escapeHtml(a.whatNote)}</p>`);
+  const who = section(a.whoEyebrow, a.whoTitle,
+    `<p class="lead">${escapeHtml(a.whoText)}</p><ul class="cities">${a.cities.map((city, index) => `<li${index === 0 ? ' class="first"' : ""}><b>${escapeHtml(city)}</b><span>${escapeHtml(index === 0 ? a.cityFirst : a.cityNext)}</span></li>`).join("")}</ul><p class="note">${escapeHtml(a.curators)}</p>`);
+  const money = section(a.moneyEyebrow, a.moneyTitle,
+    `<p class="about-notice">${escapeHtml(a.moneyNotice)}</p><div class="steps">${a.moneyPoints.map((point) => `<div class="step"><b>${escapeHtml(point.title)}</b><span>${escapeHtml(point.text)}</span></div>`).join("")}</div>`);
+  const inside = section(a.insideEyebrow, a.insideEyebrow.replace(/^\d+ · /, ""),
+    `<div class="cards">${a.insideItems.map((item) => `<div class="card"><p class="eyebrow">${escapeHtml(item.live ? a.live : a.coming)}</p><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(item.text)}</span>${item.href ? `<a class="btn" href="${escapeHtml(item.href)}">${escapeHtml(a.open)}</a>` : ""}</div>`).join("")}</div>`);
+  const door = section(a.doorEyebrow, a.doorTitle,
+    `<p class="lead">${escapeHtml(a.doorText)}</p><p><a class="btn yellow" href="#join">${escapeHtml(a.doorJoin)}</a></p>${subscriberForm()}`);
+  return `<div class="stack about"><h2 class="h">${escapeHtml(a.title)}</h2><p class="intro">${escapeHtml(a.lead)}</p>${what}${who}${money}${inside}${door}</div>`;
 }
 
 function libraryView(): string {
@@ -1109,7 +1127,7 @@ function routeName(): { view: string; arg: string } {
     ? { view: "artist", arg: route.slice("artist-".length) }
     : route === "curator"
       ? { view: "join", arg: "curator" }
-      : { view: ["channel", "library", "artists", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
+      : { view: ["channel", "about", "library", "artists", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
 }
 
 async function getLiveProfiles(): Promise<Artist[]> {
@@ -1473,6 +1491,10 @@ async function render(): Promise<void> {
   });
   const liveArtists = route.view === "artists" || route.view === "artist" ? await getLiveProfiles() : [];
   switch (route.view) {
+    case "about":
+      appView.innerHTML = aboutView();
+      wireSubscriberForms();
+      return;
     case "library":
       appView.innerHTML = libraryView();
       wireLibrary();
