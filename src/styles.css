@@ -209,3 +209,5 @@ footer{font:400 12px var(--mono);color:var(--dim);border-top:1px solid var(--lin
 @media (max-width:620px){nav{flex-wrap:wrap}nav a{padding:10px 9px}}
 .room .about-section>.btn{justify-self:start}
 .split-table .signed{white-space:nowrap}
+.role.incognito-tag{background:transparent;border:1px dashed var(--line);color:var(--dim)}
+.card.incognito{border-style:dashed}

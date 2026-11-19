@@ -186,6 +186,11 @@ export const copy = {
     noProfile: "No profile yet.",
     noMusic: "No music added yet.",
     invitation: "Invitation",
+    incognito: "Incognito",
+    incognitoNoteStart: "This profile is incognito. Only the name and shared unleashes show until",
+    incognitoNoteEnd: "claims it and fills it in.",
+    sharedWork: "shared unleash",
+    sharedWorks: "shared unleashes",
   },
   join: {
     title: "Join Unleashed",
