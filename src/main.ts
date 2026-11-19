@@ -31,6 +31,7 @@ type Artist = {
   meaning?: string;
   invited_by?: string | null;
   inviter?: { name: string; slug: string } | null;
+  incognito?: boolean;
 };
 
 type Release = {
@@ -662,7 +663,31 @@ function textBlocks(value: string | undefined): string {
   return output.join("");
 }
 
+function worksFor(artist: Artist): Release[] {
+  return releases.filter((release) => (release.artists ?? []).includes(artist.slug)
+    || (release.credits ?? []).some((credit) => credit.profile === artist.slug));
+}
+
+function incognitoCard(artist: Artist): string {
+  const count = worksFor(artist).length;
+  return `<article class="card incognito"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}<span class="role incognito-tag">${escapeHtml(copy.profile.incognito)}</span></div>
+    <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>
+    <span class="note">${count ? `${escapeHtml(count)} ${escapeHtml(count === 1 ? copy.profile.sharedWork : copy.profile.sharedWorks)}` : escapeHtml(copy.profile.firstUnleash)}</span></article>`;
+}
+
+function incognitoProfile(artist: Artist): string {
+  const works = worksFor(artist);
+  return `<div class="stack" style="gap:24px"><a class="back" href="#artists">${escapeHtml(copy.profile.back)}</a>
+    <section class="stack">
+      <div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}<span class="role incognito-tag">${escapeHtml(copy.profile.incognito)}</span></div>
+      <h2 class="h">${escapeHtml(artist.name)}</h2>
+      <p class="note">${escapeHtml(copy.profile.incognitoNoteStart)} ${escapeHtml(artist.name)} ${escapeHtml(copy.profile.incognitoNoteEnd)}</p>
+    </section>
+    ${workSection(copy.profile.unleashed, works, copy.profile.firstUnleash, true)}</div>`;
+}
+
 function card(artist: Artist): string {
+  if (artist.incognito) return incognitoCard(artist);
   const firstLookingForLine = (artist.looking_for ?? "").split(/\r?\n/).find((line) => line.trim())?.replace(/^- /, "") ?? "";
   const image = assetPath(artist.photo) || sealUrl;
   return `<article class="card"><img class="card-seal" src="${escapeHtml(image)}" alt="" width="48" height="48"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
@@ -698,7 +723,8 @@ function workSection(title: string, releasesForSection: Release[], emptyMessage:
 }
 
 function profile(artist: Artist): string {
-  const releasesForArtist = releases.filter((release) => (release.artists ?? []).includes(artist.slug));
+  if (artist.incognito) return incognitoProfile(artist);
+  const releasesForArtist = worksFor(artist);
   const artistPlaylists = playlistFor(artist);
   const selectedPlaylist = artistPlaylists.find((playlist) => playlist.id === playlistFilter);
   const playlistItems = selectedPlaylist ? new Set(selectedPlaylist.items) : null;
