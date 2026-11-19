@@ -44,46 +44,5 @@
     ],
     "wordmark": "img/bonhomme-wordmark.svg",
     "meaning": "Bonhomme: old French for “good man”"
-  },
-  {
-    "slug": "hugo-mesi",
-    "name": "Hugo Mesi",
-    "aliases": [],
-    "roles": [
-      "DJ",
-      "Producer"
-    ],
-    "incognito": true,
-    "open_to_unleash": false,
-    "links": []
-  },
-  {
-    "slug": "illegal-p",
-    "name": "iLLEGAL P",
-    "aliases": [],
-    "roles": [
-      "Producer"
-    ],
-    "incognito": true,
-    "open_to_unleash": false,
-    "links": []
-  },
-  {
-    "slug": "lasse-von-mond",
-    "name": "Lasse von Mond",
-    "aliases": [],
-    "roles": [],
-    "incognito": true,
-    "open_to_unleash": false,
-    "links": []
-  },
-  {
-    "slug": "lumi-von-mond",
-    "name": "Lumi von Mond",
-    "aliases": [],
-    "roles": [],
-    "incognito": true,
-    "open_to_unleash": false,
-    "links": []
   }
 ]

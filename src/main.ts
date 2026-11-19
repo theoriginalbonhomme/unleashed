@@ -135,7 +135,9 @@ type InviteRow = {
   used_at: string | null;
   expires_at: string;
   created_at: string;
+  listed_slug?: string | null;
 };
+type ListedArtistRow = { slug: string; name: string; roles: string[]; created_at: string };
 
 type SubscriberRow = {
   id: string;
@@ -186,6 +188,7 @@ type ReadOnlyTable<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>
 type Database = {
   public: {
     Tables: {
+      listed_artists: ReadOnlyTable<ListedArtistRow>;
       rooms: ReadOnlyTable<RoomRow>;
       room_members: ReadOnlyTable<RoomMemberRow>;
       room_links: ReadOnlyTable<RoomLinkRow>;
@@ -229,6 +232,10 @@ type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      create_listed_artist: { Args: { p_name: string; p_slug: string; p_roles: string[] }; Returns: string };
+      delete_listed_artist: { Args: { p_slug: string }; Returns: undefined };
+      create_listed_invite: { Args: { p_slug: string; p_email: string }; Returns: { id: string; code: string; expires_at: string }[] };
+      get_invite_listing: { Args: { p_code: string }; Returns: { slug: string; name: string; roles: string[] }[] };
       create_room: { Args: { p_title: string }; Returns: string };
       add_room_member: { Args: { p_room: string; p_slug: string; p_role?: string }; Returns: undefined };
       remove_room_member: { Args: { p_room: string; p_profile: string }; Returns: undefined };
@@ -467,7 +474,19 @@ async function updateAccountHeader(): Promise<void> {
   });
 }
 
-const staticArtist = (slug: string): Artist | undefined => artists.find((artist) => artist.slug === slug);
+let listedArtists: Artist[] = [];
+
+async function loadListedArtists(): Promise<void> {
+  if (!supabase) return;
+  const { data, error } = await supabase.from("listed_artists").select("slug,name,roles,created_at").order("name");
+  if (error) return;
+  listedArtists = (data ?? [])
+    .filter((row) => !artists.some((artist) => artist.slug === row.slug))
+    .map((row) => ({ slug: row.slug, name: row.name, roles: row.roles ?? [], incognito: true, open_to_unleash: false, aliases: [], links: [] }));
+}
+
+const staticArtist = (slug: string): Artist | undefined => artists.find((artist) => artist.slug === slug)
+  ?? listedArtists.find((artist) => artist.slug === slug);
 const artistName = (slug: string): string => staticArtist(slug)?.name ?? slug;
 
 function platform(value: string): string {
@@ -1380,8 +1399,8 @@ function libraryView(): string {
 
 function artistsView(liveArtists: Artist[]): string {
   const allArtists = [...artists];
-  liveArtists.forEach((live) => {
-    if (!allArtists.some((artist) => artist.slug === live.slug)) allArtists.push(live);
+  [...liveArtists, ...listedArtists].forEach((candidate) => {
+    if (!allArtists.some((artist) => artist.slug === candidate.slug)) allArtists.push(candidate);
   });
   const roles = [copy.artists.all, ...new Set(allArtists.flatMap((artist) => artist.roles ?? []))];
   const filtered = allArtists.filter((artist) => roleFilter === copy.artists.all || (artist.roles ?? []).includes(roleFilter));
@@ -1460,7 +1479,9 @@ function wireSignInForm(): void {
 }
 
 function artistView(slug: string, liveArtists: Artist[]): string {
-  const artist = staticArtist(slug) ?? liveArtists.find((candidate) => candidate.slug === slug);
+  const artist = artists.find((candidate) => candidate.slug === slug)
+    ?? liveArtists.find((candidate) => candidate.slug === slug)
+    ?? listedArtists.find((candidate) => candidate.slug === slug);
   return artist
     ? profile(artist)
     : `<div class="empty">${escapeHtml(copy.artists.notLive)} <a href="#artists">${escapeHtml(copy.artists.allArtists)}</a>.</div>`;
@@ -1564,23 +1585,168 @@ function wireArtists(): void {
   });
 }
 
+function slugFromName(name: string): string {
+  return name.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+}
+
+function inviteUrlFor(code: string): string {
+  return `${location.origin}${location.pathname}?invite=${encodeURIComponent(code)}#join`;
+}
+
+function inviteMailto(email: string, inviteUrl: string, listed?: { name: string; slug: string }): string {
+  const j = copy.join;
+  const profileUrl = listed ? `${location.origin}${location.pathname}#artist-${encodeURIComponent(listed.slug)}` : "";
+  const body = (listed ? j.mailBodyListed : j.mailBodyPlain).replace("{profile}", profileUrl).replace("{link}", inviteUrl);
+  const text = `${j.mailGreeting}${listed ? ` ${listed.name}` : ""},\n\n${body}\n\n${j.mailSignoff}`;
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(j.mailSubject)}&body=${encodeURIComponent(text)}`;
+}
+
+function inviteResultMarkup(email: string, inviteUrl: string, expiresAt: string, listed?: { name: string; slug: string }): string {
+  return `<p class="note">${escapeHtml(copy.join.inviteReady)} ${escapeHtml(copy.join.inviteExpires)} ${escapeHtml(new Date(expiresAt).toLocaleDateString())}.</p>
+    <div class="links"><a class="btn yellow" href="${escapeHtml(inviteMailto(email, inviteUrl, listed))}">${escapeHtml(copy.join.emailInvite)}</a><button type="button" class="btn copy-invite" data-url="${escapeHtml(inviteUrl)}">${escapeHtml(copy.join.copyLink)}</button></div>`;
+}
+
+function wireCopyInvite(scope: ParentNode, messageTarget: Element | null): void {
+  scope.querySelectorAll<HTMLButtonElement>(".copy-invite").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.url ?? "");
+        showToast(copy.join.copied);
+      } catch {
+        setMessage(messageTarget, copy.messages.copyError, "error");
+      }
+    });
+  });
+}
+
+async function prefillFromListing(panel: HTMLElement, code: string): Promise<void> {
+  if (!supabase || !code) return;
+  const { data } = await supabase.rpc("get_invite_listing", { p_code: code });
+  const listing = data?.[0];
+  if (!listing) return;
+  const set = (selector: string, value: string) => {
+    const input = panel.querySelector<HTMLInputElement>(selector);
+    if (input && !input.value) input.value = value;
+  };
+  set("#profile-name", listing.name);
+  set("#profile-slug", listing.slug);
+  if (listing.roles?.length) set("#profile-roles", listing.roles.join(", "));
+  panel.querySelector("#profile-form h3")?.insertAdjacentHTML("afterend",
+    `<p class="notice">${escapeHtml(copy.join.listedWaitingStart)} ${escapeHtml(listing.name)} ${escapeHtml(copy.join.listedWaitingMiddle)} <b>${escapeHtml(listing.slug)}</b> ${escapeHtml(copy.join.listedWaitingEnd)}</p>`);
+}
+
+async function listedDeskMarkup(): Promise<string> {
+  if (!supabase) return "";
+  const j = copy.join;
+  const [{ data: listed }, { data: invites }, { data: claimed }] = await Promise.all([
+    supabase.from("listed_artists").select("slug,name,roles,created_at").order("name"),
+    supabase.from("invites").select("*").not("listed_slug", "is", null).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("slug,status"),
+  ]);
+  const claimedSlugs = new Map((claimed ?? []).map((profile) => [profile.slug, profile.status]));
+  const items = (listed ?? []).map((artist) => {
+    const invite = (invites ?? []).find((row) => row.listed_slug === artist.slug);
+    const claimStatus = claimedSlugs.get(artist.slug);
+    const status = claimStatus
+      ? `${j.listedStatusClaimed}${claimStatus === "pending" ? ` · ${j.profilePending}` : ""}`
+      : invite
+        ? `${j.listedStatusInvited} ${invite.email}${invite.used_at ? ` · ${j.used}` : ` · ${j.inviteExpires} ${new Date(invite.expires_at).toLocaleDateString()}`}`
+        : j.listedStatusIncognito;
+    const inviteForm = claimStatus ? "" : `<form class="studio-form stack" data-listed-invite="${escapeHtml(artist.slug)}" data-listed-name="${escapeHtml(artist.name)}">
+        <label>${escapeHtml(j.listedInviteEmail)}<input type="email" name="email" autocomplete="off" required></label>
+        <button class="btn uv" type="submit">${escapeHtml(j.listedInviteButton)}</button>
+        <div data-listed-result></div>
+      </form>`;
+    return `<article class="card incognito"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
+      <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>
+      <span class="note">${escapeHtml(status)}</span>${inviteForm}
+      <button class="btn" type="button" data-listed-remove="${escapeHtml(artist.slug)}">${escapeHtml(j.listedRemove)}</button></article>`;
+  }).join("");
+  return `<section class="stack" id="listed-desk"><h3 class="crate"><span>${escapeHtml(j.listedTitle)}</span><span>${escapeHtml(j.listedSubtitle)}</span></h3>
+    <p class="note">${escapeHtml(j.listedHelp)}</p>
+    <form class="studio-form stack" id="listed-form">
+      <label for="listed-name">${escapeHtml(j.listedName)}</label><input id="listed-name" name="name" maxlength="80" required>
+      <label for="listed-slug">${escapeHtml(j.listedSlug)}</label><input id="listed-slug" name="slug" maxlength="60" pattern="[a-z0-9]+(-[a-z0-9]+)*" required autocapitalize="none">
+      <label for="listed-roles">${escapeHtml(j.listedRoles)}</label><input id="listed-roles" name="roles" maxlength="200"><span class="note">${escapeHtml(j.rolesHint)}</span>
+      <button class="btn yellow" type="submit">${escapeHtml(j.listedCreate)}</button>
+    </form>
+    <div class="cards">${items || `<div class="empty">${escapeHtml(j.listedEmpty)}</div>`}</div>
+    <p id="listed-message" aria-live="polite"></p></section>`;
+}
+
+function wireListedDesk(panel: HTMLElement): void {
+  if (!supabase) return;
+  const client = supabase;
+  const message = panel.querySelector("#listed-message");
+  const nameInput = panel.querySelector<HTMLInputElement>("#listed-name");
+  const slugInput = panel.querySelector<HTMLInputElement>("#listed-slug");
+  let slugTouched = false;
+  slugInput?.addEventListener("input", () => { slugTouched = true; });
+  nameInput?.addEventListener("input", () => {
+    if (!slugTouched && slugInput) slugInput.value = slugFromName(nameInput.value);
+  });
+  const form = panel.querySelector<HTMLFormElement>("#listed-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = new FormData(form);
+    const roles = String(values.get("roles") ?? "").split(",").map((role) => role.trim()).filter(Boolean);
+    const { error } = await client.rpc("create_listed_artist", {
+      p_name: String(values.get("name") ?? "").trim(),
+      p_slug: String(values.get("slug") ?? "").trim().toLowerCase(),
+      p_roles: roles,
+    });
+    if (error) {
+      setMessage(message, error.message, "error");
+      return;
+    }
+    showToast(copy.join.listedCreated);
+    await loadListedArtists();
+    await joinPage();
+  });
+  panel.querySelectorAll<HTMLFormElement>("[data-listed-invite]").forEach((inviteForm) => {
+    inviteForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = String(new FormData(inviteForm).get("email") ?? "").trim().toLowerCase();
+      const slug = inviteForm.dataset.listedInvite ?? "";
+      const name = inviteForm.dataset.listedName ?? "";
+      const button = inviteForm.querySelector<HTMLButtonElement>("button[type=submit]");
+      if (button) button.disabled = true;
+      const { data, error } = await client.rpc("create_listed_invite", { p_slug: slug, p_email: email }).single();
+      if (button) button.disabled = false;
+      const result = inviteForm.querySelector<HTMLElement>("[data-listed-result]");
+      if (error || !data || !result) {
+        setMessage(result ?? message, error?.message ?? copy.messages.inviteCreateError, "error");
+        return;
+      }
+      result.innerHTML = inviteResultMarkup(email, inviteUrlFor(data.code), data.expires_at, { name, slug });
+      wireCopyInvite(result, message);
+    });
+  });
+  panel.querySelectorAll<HTMLButtonElement>("[data-listed-remove]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!window.confirm(copy.join.listedRemoveConfirm)) return;
+      const { error } = await client.rpc("delete_listed_artist", { p_slug: button.dataset.listedRemove ?? "" });
+      if (error) {
+        setMessage(message, error.message, "error");
+        return;
+      }
+      await loadListedArtists();
+      await joinPage();
+    });
+  });
+}
+
 async function handleInvite(email: string): Promise<void> {
   if (!supabase) throw new Error(copy.messages.configMissing);
   const { data, error } = await supabase.rpc("create_invite", { p_email: email }).single();
   if (error) throw new Error(`${copy.messages.inviteCreateError} ${error.message}`);
-  const inviteUrl = `${location.origin}${location.pathname}?invite=${encodeURIComponent(data.code)}#join`;
+  const inviteUrl = inviteUrlFor(data.code);
   const message = appView.querySelector<HTMLElement>("#invite-message");
   if (message) {
-    message.innerHTML = `${escapeHtml(copy.join.inviteCreated)} ${escapeHtml(new Date(data.expires_at).toLocaleDateString())}. <a href="${escapeHtml(inviteUrl)}">${escapeHtml(inviteUrl)}</a> <button type="button" class="btn copy-invite">${escapeHtml(copy.join.copyLink)}</button>`;
-    message.className = "note";
-    message.querySelector(".copy-invite")?.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(inviteUrl);
-        setMessage(message, copy.join.copied, "success");
-      } catch {
-        setMessage(message, copy.messages.copyError, "error");
-      }
-    });
+    message.innerHTML = inviteResultMarkup(email, inviteUrl, data.expires_at);
+    message.className = "";
+    wireCopyInvite(message, message);
   }
   const form = appView.querySelector<HTMLFormElement>("#invite-form");
   form?.reset();
@@ -1729,6 +1895,8 @@ async function joinPage(): Promise<void> {
     try {
       const curator = await loadCuratorDesk(user.id);
       if (curator) {
+        panel.insertAdjacentHTML("beforeend", await listedDeskMarkup());
+        wireListedDesk(panel);
         panel.insertAdjacentHTML("beforeend", curator);
         wireCallAndDemoForms();
         panel.querySelector<HTMLButtonElement>(".copy-subscriber-emails")?.addEventListener("click", async () => {
@@ -1792,6 +1960,7 @@ async function joinPage(): Promise<void> {
     <label for="profile-links">${escapeHtml(copy.join.links)}</label><input id="profile-links" name="links" placeholder="https://example.com"><span class="note">${escapeHtml(copy.join.linksHint)}</span>
     <label for="profile-contact">${escapeHtml(copy.join.contact)}</label><input id="profile-contact" name="contact" maxlength="200">
     <button class="btn uv" type="submit">${escapeHtml(copy.join.submitProfile)}</button><p id="profile-message" aria-live="polite"></p></form>`;
+  void prefillFromListing(panel, code);
   panel.querySelector<HTMLFormElement>("#profile-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
@@ -1936,7 +2105,7 @@ async function startApp(): Promise<void> {
     }
   }
 
-  await updateAccountHeader();
+  await Promise.all([updateAccountHeader(), loadListedArtists()]);
   await render();
   if (authCallbackMessage) {
     const message = document.createElement("p");
