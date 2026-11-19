@@ -226,4 +226,4 @@ body[data-section="publishing"] .invitation-prompt{display:none}
 .publishing .card span{font-size:15px;line-height:1.45}
 .publishing-work .btn{justify-self:start}
 .portrait-initials{display:grid;place-items:center;background:var(--tq);color:var(--on);font:400 clamp(56px,12vw,120px)/1 var(--display);letter-spacing:-.03em}
-.code-row{display:flex;gap:8px;flex-wrap:wrap}.code-row input{flex:1 1 160px;font:700 18px var(--mono);letter-spacing:.12em;text-transform:uppercase}.card-code{font-family:var(--mono);letter-spacing:.12em}
+.code-row{display:flex;gap:8px;flex-wrap:wrap}.code-row input{flex:1 1 160px;font:700 18px var(--mono);letter-spacing:.12em;text-transform:uppercase}.code-row input::placeholder{text-transform:none;letter-spacing:0;font-weight:400;font-size:15px}.card-code{font-family:var(--mono);letter-spacing:.12em}
