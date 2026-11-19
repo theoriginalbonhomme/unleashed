@@ -201,7 +201,7 @@ export const copy = {
     lead: "Unleashed is a low-key place for musicians to find each other and make things together. Everything is free to play and download. Listeners can contribute if they want.",
     inviteOnly: "Unleashed is invitation only. Ask a member for an invite, or enter the code from your card.",
     codeLabel: "Your code",
-    codePlaceholder: "BH144K",
+    codePlaceholder: "Code from your card",
     codeButton: "Unleash",
     codeHelp: "The code is printed on the card you were given. Capitals and dashes don't matter.",
     codeInvalid: "That code doesn't open the door. Check it and try again, or ask the person who gave you the card.",
