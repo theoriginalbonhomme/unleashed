@@ -374,7 +374,7 @@ function initialiseShell(): void {
   }
   const byline = document.querySelector<HTMLElement>("#platform-line");
   if (byline) byline.textContent = copy.brand.platform;
-  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav, copy.publishing.nav];
+  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav];
   document.querySelectorAll<HTMLElement>("nav a").forEach((link, index) => {
     link.textContent = navLabels[index] ?? "";
   });
@@ -397,9 +397,19 @@ function initialiseShell(): void {
     unleash.textContent = copy.brand.unleash;
     unleash.href = "#collab";
   }
-  const footer = document.querySelectorAll<HTMLElement>("footer span");
-  if (footer[0]) footer[0].textContent = copy.brand.footer;
-  if (footer[1]) footer[1].textContent = copy.brand.footerTagline;
+  const footerLinks = document.querySelector<HTMLElement>("#footer-links");
+  if (footerLinks) {
+    footerLinks.setAttribute("role", "navigation");
+    footerLinks.setAttribute("aria-label", copy.brand.footerLabel);
+    const footerLabels: Record<string, string> = {
+      bonhomme: copy.brand.footerBonhomme,
+      publishing: copy.brand.footerPublishing,
+      platform: copy.brand.footerPlatform,
+    };
+    footerLinks.querySelectorAll<HTMLAnchorElement>("a[data-foot]").forEach((link) => {
+      link.textContent = footerLabels[link.dataset.foot ?? ""] ?? "";
+    });
+  }
   const loading = appView.querySelector<HTMLElement>(".note");
   if (loading) loading.textContent = copy.brand.loading;
 }
@@ -2043,9 +2053,25 @@ async function joinPage(): Promise<void> {
   });
 }
 
+function setSection(section: "publishing" | "platform"): void {
+  const publishing = section === "publishing";
+  document.body.dataset.section = section;
+  const word = document.querySelector<HTMLElement>(".word");
+  if (word) word.innerHTML = `${escapeHtml(copy.brand.titleStart)}<span>${escapeHtml(copy.brand.titleEnd)}</span>${publishing ? `<b class="word-section">${escapeHtml(copy.publishing.nav)}</b>` : ""}`;
+  const tagline = document.querySelector<HTMLElement>("#tagline");
+  if (tagline) tagline.textContent = publishing ? copy.publishing.sectionTagline : site.tagline || copy.brand.taglineFallback;
+  const byline = document.querySelector<HTMLElement>("#platform-line");
+  if (byline) byline.textContent = publishing ? copy.publishing.sectionByline : copy.brand.platform;
+  document.title = publishing ? copy.publishing.eyebrow : copy.brand.documentTitle;
+  document.querySelectorAll<HTMLAnchorElement>("#footer-links a[data-foot]").forEach((link) => {
+    link.setAttribute("aria-current", link.dataset.foot === section ? "page" : "false");
+  });
+}
+
 async function render(): Promise<void> {
   document.querySelector("#auth-callback-message")?.remove();
   const route = routeName();
+  setSection(route.view === "publishing" ? "publishing" : "platform");
   document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((link) => {
     const target = route.view === "artist" ? "artists" : route.view === "room" ? "studio" : route.view;
     link.setAttribute("aria-current", link.getAttribute("href") === `#${target}` ? "page" : "false");
