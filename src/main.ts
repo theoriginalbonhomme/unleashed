@@ -374,7 +374,7 @@ function initialiseShell(): void {
   }
   const byline = document.querySelector<HTMLElement>("#platform-line");
   if (byline) byline.textContent = copy.brand.platform;
-  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav];
+  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav, copy.press.nav];
   document.querySelectorAll<HTMLElement>("nav a").forEach((link, index) => {
     link.textContent = navLabels[index] ?? "";
   });
@@ -1366,6 +1366,36 @@ function wireRoom(roomId: string): void {
   });
 }
 
+const pressEmail = "theoriginalbonhomme@gmail.com";
+
+function pressView(): string {
+  const p = copy.press;
+  const mailto = `mailto:${pressEmail}?subject=${encodeURIComponent(p.contactSubject)}`;
+  const section = (eyebrow: string, title: string, body: string) =>
+    `<section class="about-section"><p class="eyebrow">${escapeHtml(eyebrow)}</p><h3 class="about-title">${escapeHtml(title)}</h3>${body}</section>`;
+  const values = section(p.valueEyebrow, p.valueTitle,
+    `<div class="cards">${p.values.map((item) => `<div class="card"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(item.text)}</span></div>`).join("")}</div>`);
+  const caseStudy = section(p.caseEyebrow, p.caseTitle,
+    `<p class="lead">${escapeHtml(p.caseLead)}</p>
+    <div class="press-works">${p.caseWorks.map((work) => `<div class="press-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span></div>`).join("")}</div>
+    <h4 class="crate"><span>${escapeHtml(p.caseDidTitle)}</span></h4>
+    <ul class="about-points">${p.caseDid.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
+    <p class="about-notice">${escapeHtml(p.caseStatus)}</p>
+    <p class="note">${escapeHtml(p.caseNote)}</p>`);
+  const steps = section(p.stepsEyebrow, p.stepsEyebrow.replace(/^\d+ · /, ""),
+    `<div class="steps">${p.steps.map((step) => `<div class="step"><b>${escapeHtml(step.title)}</b><span>${escapeHtml(step.text)}</span></div>`).join("")}</div>`);
+  const who = section(p.forEyebrow, p.forTitle,
+    `<ul class="about-points">${p.forItems.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`);
+  const door = section(p.doorEyebrow, p.doorTitle,
+    `<p class="lead">${escapeHtml(p.doorText)}</p><p><a class="btn yellow" href="${escapeHtml(mailto)}">${escapeHtml(p.contact)}</a></p>`);
+  return `<div class="stack about press">
+    <p class="eyebrow">${escapeHtml(p.eyebrow)}</p>
+    <h2 class="h">${escapeHtml(p.title)}</h2>
+    <p class="intro">${escapeHtml(p.lead)}</p>
+    <p><a class="btn uv" href="${escapeHtml(mailto)}">${escapeHtml(p.contact)}</a></p>
+    ${values}${caseStudy}${steps}${who}${door}</div>`;
+}
+
 function aboutView(): string {
   const a = copy.about;
   const section = (eyebrow: string, title: string, body: string) =>
@@ -1500,7 +1530,7 @@ function routeName(): { view: string; arg: string } {
     ? { view: "artist", arg: route.slice("artist-".length) }
     : route === "curator"
       ? { view: "join", arg: "curator" }
-      : { view: ["channel", "about", "library", "artists", "studio", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
+      : { view: ["channel", "about", "library", "artists", "studio", "press", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
 }
 
 async function getLiveProfiles(): Promise<Artist[]> {
@@ -2015,6 +2045,9 @@ async function render(): Promise<void> {
     case "about":
       appView.innerHTML = aboutView();
       wireSubscriberForms();
+      return;
+    case "press":
+      appView.innerHTML = pressView();
       return;
     case "studio":
       appView.innerHTML = await studioView();
