@@ -312,13 +312,13 @@ export const copy = {
     subscriberLoadError: "Could not load subscribers.",
     magicLinkExpired: "This sign-in link has expired. Request a new one.",
   },
-  press: {
-    nav: "Press",
-    eyebrow: "Unleashed Press",
+  publishing: {
+    nav: "Publishing",
+    eyebrow: "Unleashed Publishing",
     title: "You write. We carry the rest.",
     lead: "Publishing for writers and artists who work outside the big houses. You keep your copyright and the larger share. We bring the funding, the print, the digital side and the launch.",
     contact: "Send us your manuscript or idea",
-    contactSubject: "Manuscript for Unleashed Press",
+    contactSubject: "Manuscript for Unleashed Publishing",
     valueEyebrow: "01 · What we bring",
     valueTitle: "Everything between the manuscript and the reader.",
     values: [
@@ -482,7 +482,7 @@ export const copy = {
       { title: "Call board", text: "Open calls from Unleashers. Send a demo that fits the call.", href: "#collab", live: true },
       { title: "Artists", text: "Every Unleasher on the wall was vouched for and approved.", href: "#artists", live: true },
       { title: "Studio", text: "Unleash Rooms: sign the split first, then share file links, DAW notes and whose turn it is.", href: "#studio", live: true },
-      { title: "Press", text: "Books and games for writers and artists. You keep your copyright; we bring funding, print and launch.", href: "#press", live: true },
+      { title: "Publishing", text: "Books and games for writers and artists. You keep your copyright; we bring funding, print and launch.", href: "#publishing", live: true },
       { title: "Sessions", text: "Release nights in each city, starting in Tallinn.", href: "", live: false },
     ],
     open: "Open",

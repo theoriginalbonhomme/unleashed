@@ -374,7 +374,7 @@ function initialiseShell(): void {
   }
   const byline = document.querySelector<HTMLElement>("#platform-line");
   if (byline) byline.textContent = copy.brand.platform;
-  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav, copy.press.nav];
+  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav, copy.publishing.nav];
   document.querySelectorAll<HTMLElement>("nav a").forEach((link, index) => {
     link.textContent = navLabels[index] ?? "";
   });
@@ -1375,18 +1375,18 @@ function wireRoom(roomId: string): void {
   });
 }
 
-const pressEmail = "theoriginalbonhomme@gmail.com";
+const publishingEmail = "theoriginalbonhomme@gmail.com";
 
-function pressView(): string {
-  const p = copy.press;
-  const mailto = `mailto:${pressEmail}?subject=${encodeURIComponent(p.contactSubject)}`;
+function publishingView(): string {
+  const p = copy.publishing;
+  const mailto = `mailto:${publishingEmail}?subject=${encodeURIComponent(p.contactSubject)}`;
   const section = (eyebrow: string, title: string, body: string) =>
     `<section class="about-section"><p class="eyebrow">${escapeHtml(eyebrow)}</p><h3 class="about-title">${escapeHtml(title)}</h3>${body}</section>`;
   const values = section(p.valueEyebrow, p.valueTitle,
     `<div class="cards">${p.values.map((item) => `<div class="card"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(item.text)}</span></div>`).join("")}</div>`);
   const caseStudy = section(p.caseEyebrow, p.caseTitle,
     `<p class="lead">${escapeHtml(p.caseLead)}</p>
-    <div class="press-works">${p.caseWorks.map((work) => `<div class="press-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span>${work.href ? `<a class="btn solid" href="${escapeHtml(work.href)}" target="_blank" rel="noopener">${escapeHtml(work.cta)}</a>` : ""}</div>`).join("")}</div>
+    <div class="publishing-works">${p.caseWorks.map((work) => `<div class="publishing-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span>${work.href ? `<a class="btn solid" href="${escapeHtml(work.href)}" target="_blank" rel="noopener">${escapeHtml(work.cta)}</a>` : ""}</div>`).join("")}</div>
     <p><a class="btn" href="#artist-kati-murutar">${escapeHtml(p.caseProfile)}</a></p>
     <h4 class="crate"><span>${escapeHtml(p.caseDidTitle)}</span></h4>
     <ul class="about-points">${p.caseDid.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
@@ -1398,7 +1398,7 @@ function pressView(): string {
     `<ul class="about-points">${p.forItems.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`);
   const door = section(p.doorEyebrow, p.doorTitle,
     `<p class="lead">${escapeHtml(p.doorText)}</p><p><a class="btn yellow" href="${escapeHtml(mailto)}">${escapeHtml(p.contact)}</a></p>`);
-  return `<div class="stack about press">
+  return `<div class="stack about publishing">
     <p class="eyebrow">${escapeHtml(p.eyebrow)}</p>
     <h2 class="h">${escapeHtml(p.title)}</h2>
     <p class="intro">${escapeHtml(p.lead)}</p>
@@ -1534,13 +1534,13 @@ function routeName(): { view: string; arg: string } {
   } catch {
     return { view: "channel", arg: "" };
   }
-  const route = hash.slice(1);
+  const route = hash.slice(1) === "press" ? "publishing" : hash.slice(1);
   if (route.startsWith("room-")) return { view: "room", arg: route.slice("room-".length) };
   return route.startsWith("artist-")
     ? { view: "artist", arg: route.slice("artist-".length) }
     : route === "curator"
       ? { view: "join", arg: "curator" }
-      : { view: ["channel", "about", "library", "artists", "studio", "press", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
+      : { view: ["channel", "about", "library", "artists", "studio", "publishing", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
 }
 
 async function getLiveProfiles(): Promise<Artist[]> {
@@ -2056,8 +2056,8 @@ async function render(): Promise<void> {
       appView.innerHTML = aboutView();
       wireSubscriberForms();
       return;
-    case "press":
-      appView.innerHTML = pressView();
+    case "publishing":
+      appView.innerHTML = publishingView();
       return;
     case "studio":
       appView.innerHTML = await studioView();
