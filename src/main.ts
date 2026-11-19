@@ -185,6 +185,17 @@ type RoomLogRow = {
   created_at: string;
 };
 type ReadOnlyTable<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
+type CardCodeRow = {
+  code: string;
+  label: string;
+  created_by: string | null;
+  max_uses: number;
+  uses: number;
+  active: boolean;
+  expires_at: string;
+  created_at: string;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -223,6 +234,12 @@ type Database = {
         Update: Partial<CallRow>;
         Relationships: [];
       };
+      card_codes: {
+        Row: CardCodeRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       demos: {
         Row: DemoRow;
         Insert: Pick<DemoRow, "call_id" | "name" | "email" | "link" | "message">;
@@ -244,6 +261,8 @@ type Database = {
       add_room_link: { Args: { p_room: string; p_label: string; p_url: string; p_kind?: string; p_note?: string }; Returns: undefined };
       set_room_next_step: { Args: { p_room: string; p_stage: string; p_next_owner: string | null; p_note?: string }; Returns: undefined };
       check_invite: { Args: { p_code: string }; Returns: boolean };
+      create_card_code: { Args: { p_code: string; p_label: string; p_max_uses: number; p_expires_at: string }; Returns: string };
+      set_card_code_active: { Args: { p_code: string; p_active: boolean }; Returns: undefined };
       create_invite: {
         Args: { p_email: string };
         Returns: { id: string; code: string; expires_at: string }[];
@@ -1686,6 +1705,99 @@ async function prefillFromListing(panel: HTMLElement, code: string): Promise<voi
     `<p class="notice">${escapeHtml(copy.join.listedWaitingStart)} ${escapeHtml(listing.name)} ${escapeHtml(copy.join.listedWaitingMiddle)} <b>${escapeHtml(listing.slug)}</b> ${escapeHtml(copy.join.listedWaitingEnd)}</p>`);
 }
 
+function codeFormMarkup(): string {
+  const j = copy.join;
+  return `<form id="code-form" class="stack code-form"><label for="card-code">${escapeHtml(j.codeLabel)}</label>
+    <div class="code-row"><input id="card-code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" required placeholder="${escapeHtml(j.codePlaceholder)}"><button class="btn uv" type="submit">${escapeHtml(j.codeButton)}</button></div>
+    <span class="note">${escapeHtml(j.codeHelp)}</span><p id="code-message" aria-live="polite"></p></form>`;
+}
+
+function wireCodeForm(panel: HTMLElement): void {
+  const form = panel.querySelector<HTMLFormElement>("#code-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    const raw = String(new FormData(form).get("code") ?? "").trim();
+    const message = form.querySelector<HTMLElement>("#code-message");
+    const submit = form.querySelector<HTMLButtonElement>("button");
+    if (!raw) return;
+    if (submit) submit.disabled = true;
+    const { data: valid, error } = await supabase.rpc("check_invite", { p_code: raw });
+    if (submit) submit.disabled = false;
+    if (error) {
+      setMessage(message, `${copy.messages.inviteCheckError} ${error.message}`, "error");
+      return;
+    }
+    if (!valid) {
+      setMessage(message, copy.join.codeInvalid, "error");
+      return;
+    }
+    const cardCode = /^[0-9a-f]{32}$/.test(raw) ? raw : raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    history.replaceState(null, "", `${location.pathname}?invite=${encodeURIComponent(cardCode)}#join`);
+    await joinPage();
+  });
+}
+
+async function cardCodesDeskMarkup(): Promise<string> {
+  if (!supabase) return "";
+  const j = copy.join;
+  const { data: codes, error } = await supabase.from("card_codes").select("*").order("created_at", { ascending: false });
+  if (error) return `<p class="note">${escapeHtml(error.message)}</p>`;
+  const items = (codes ?? []).map((row) => {
+    const expired = new Date(row.expires_at).getTime() <= Date.now();
+    const state = !row.active ? j.cardCodeOff : expired ? j.cardCodeExpired : row.uses >= row.max_uses ? j.cardCodeFull : j.cardCodeOn;
+    return `<article class="card"><span class="k">${escapeHtml(state)}</span><h4 class="card-code">${escapeHtml(row.code)}</h4>
+      <span class="note">${escapeHtml(row.label)}</span>
+      <span class="note">${escapeHtml(`${row.uses} / ${row.max_uses} ${j.cardCodeUsed} · ${j.inviteExpires} ${new Date(row.expires_at).toLocaleDateString()}`)}</span>
+      <button class="btn" type="button" data-card-code="${escapeHtml(row.code)}" data-card-active="${row.active ? "false" : "true"}">${escapeHtml(row.active ? j.cardCodeSwitchOff : j.cardCodeSwitchOn)}</button></article>`;
+  }).join("");
+  return `<section class="stack" id="card-codes-desk"><h3 class="crate"><span>${escapeHtml(j.cardCodesTitle)}</span></h3>
+    <p class="note">${escapeHtml(j.cardCodesHelp)}</p>
+    <div class="cards">${items || `<p class="note">${escapeHtml(j.cardCodesEmpty)}</p>`}</div>
+    <form class="studio-form stack" id="card-code-form">
+      <label for="new-card-code">${escapeHtml(j.cardCodeNew)}</label><input id="new-card-code" name="code" maxlength="20" autocomplete="off" required>
+      <label for="new-card-label">${escapeHtml(j.cardCodeLabel)}</label><input id="new-card-label" name="label" maxlength="120">
+      <label for="new-card-max">${escapeHtml(j.cardCodeMax)}</label><input id="new-card-max" name="max" type="number" min="1" max="10000" value="300" required>
+      <label for="new-card-end">${escapeHtml(j.cardCodeEnd)}</label><input id="new-card-end" name="end" type="date" required>
+      <button class="btn uv" type="submit">${escapeHtml(j.cardCodeCreate)}</button>
+    </form><p id="card-code-message" aria-live="polite"></p></section>`;
+}
+
+function wireCardCodesDesk(panel: HTMLElement): void {
+  if (!supabase) return;
+  const client = supabase;
+  const message = panel.querySelector("#card-code-message");
+  panel.querySelectorAll<HTMLButtonElement>("[data-card-code]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const { error } = await client.rpc("set_card_code_active", { p_code: button.dataset.cardCode ?? "", p_active: button.dataset.cardActive === "true" });
+      if (error) {
+        button.disabled = false;
+        setMessage(message, error.message, "error");
+        return;
+      }
+      await joinPage();
+    });
+  });
+  const form = panel.querySelector<HTMLFormElement>("#card-code-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = new FormData(form);
+    const end = String(values.get("end") ?? "");
+    const { error } = await client.rpc("create_card_code", {
+      p_code: String(values.get("code") ?? ""),
+      p_label: String(values.get("label") ?? ""),
+      p_max_uses: Number(values.get("max") ?? 0),
+      p_expires_at: new Date(`${end}T23:59:59`).toISOString(),
+    });
+    if (error) {
+      setMessage(message, error.message, "error");
+      return;
+    }
+    await joinPage();
+  });
+}
+
 async function listedDeskMarkup(): Promise<string> {
   if (!supabase) return "";
   const j = copy.join;
@@ -1881,7 +1993,12 @@ async function joinPage(): Promise<void> {
         return;
       }
     }
-    panel.innerHTML = `${code ? "" : `<p class="note">${escapeHtml(copy.join.inviteOnly)}</p>`}<form id="magic-link-form" class="stack"><label for="join-email">${escapeHtml(copy.join.inviteEmail)}</label><input id="join-email" type="email" name="email" autocomplete="email" required><button class="btn uv" type="submit">${escapeHtml(copy.join.sendMagicLink)}</button><p id="auth-message" class="note" aria-live="polite"></p></form>`;
+    if (!code) {
+      panel.innerHTML = codeFormMarkup();
+      wireCodeForm(panel);
+      return;
+    }
+    panel.innerHTML = `<p class="note">${escapeHtml(copy.join.codeAccepted)}</p><form id="magic-link-form" class="stack"><label for="join-email">${escapeHtml(copy.join.inviteEmail)}</label><input id="join-email" type="email" name="email" autocomplete="email" required><button class="btn uv" type="submit">${escapeHtml(copy.join.sendMagicLink)}</button><p id="auth-message" class="note" aria-live="polite"></p></form>`;
     panel.querySelector<HTMLFormElement>("#magic-link-form")?.addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget as HTMLFormElement;
@@ -1945,6 +2062,8 @@ async function joinPage(): Promise<void> {
     try {
       const curator = await loadCuratorDesk(user.id);
       if (curator) {
+        panel.insertAdjacentHTML("beforeend", await cardCodesDeskMarkup());
+        wireCardCodesDesk(panel);
         panel.insertAdjacentHTML("beforeend", await listedDeskMarkup());
         wireListedDesk(panel);
         panel.insertAdjacentHTML("beforeend", curator);
@@ -1985,7 +2104,8 @@ async function joinPage(): Promise<void> {
   }
 
   if (!code) {
-    setMessage(panel, copy.join.inviteRequired, "error");
+    panel.innerHTML = `<p class="note">${escapeHtml(copy.join.signedInAs)} ${escapeHtml(user.email ?? "")}. ${escapeHtml(copy.join.inviteRequired)}</p>${codeFormMarkup()}`;
+    wireCodeForm(panel);
     return;
   }
   const { data: valid, error: inviteError } = await supabase.rpc("check_invite", { p_code: code });
