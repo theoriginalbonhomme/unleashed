@@ -144,9 +144,51 @@ type SubscriberRow = {
   created_at: string;
 };
 
+type RoomRow = {
+  id: string;
+  title: string;
+  created_by: string;
+  status: "drafting_split" | "active";
+  stage: string;
+  next_owner: string | null;
+  next_note: string;
+  signed_at: string | null;
+  created_at: string;
+};
+type RoomMemberRow = {
+  room_id: string;
+  profile_id: string;
+  role: string;
+  percent: number;
+  accepted_at: string | null;
+  added_at: string;
+};
+type RoomLinkRow = {
+  id: string;
+  room_id: string;
+  added_by: string | null;
+  label: string;
+  url: string;
+  kind: string;
+  note: string;
+  created_at: string;
+};
+type RoomLogRow = {
+  id: number;
+  room_id: string;
+  actor: string | null;
+  action: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+};
+type ReadOnlyTable<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 type Database = {
   public: {
     Tables: {
+      rooms: ReadOnlyTable<RoomRow>;
+      room_members: ReadOnlyTable<RoomMemberRow>;
+      room_links: ReadOnlyTable<RoomLinkRow>;
+      room_log: ReadOnlyTable<RoomLogRow>;
       profiles: {
         Row: ProfileRow;
         Insert: Partial<ProfileRow> & Pick<ProfileRow, "id" | "slug" | "name">;
@@ -186,6 +228,13 @@ type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      create_room: { Args: { p_title: string }; Returns: string };
+      add_room_member: { Args: { p_room: string; p_slug: string; p_role?: string }; Returns: undefined };
+      remove_room_member: { Args: { p_room: string; p_profile: string }; Returns: undefined };
+      set_room_split: { Args: { p_room: string; p_splits: { profile_id: string; percent: number; role: string }[] }; Returns: undefined };
+      accept_room_split: { Args: { p_room: string }; Returns: string };
+      add_room_link: { Args: { p_room: string; p_label: string; p_url: string; p_kind?: string; p_note?: string }; Returns: undefined };
+      set_room_next_step: { Args: { p_room: string; p_stage: string; p_next_owner: string | null; p_note?: string }; Returns: undefined };
       check_invite: { Args: { p_code: string }; Returns: boolean };
       create_invite: {
         Args: { p_email: string };
@@ -317,7 +366,7 @@ function initialiseShell(): void {
   }
   const byline = document.querySelector<HTMLElement>("#platform-line");
   if (byline) byline.textContent = copy.brand.platform;
-  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists];
+  const navLabels = [copy.brand.channel, copy.about.nav, copy.brand.library, copy.brand.artists, copy.studio.nav];
   document.querySelectorAll<HTMLElement>("nav a").forEach((link, index) => {
     link.textContent = navLabels[index] ?? "";
   });
@@ -996,6 +1045,282 @@ async function channelView(): Promise<string> {
   </div>`;
 }
 
+type StudioAccess = { state: "ready"; member: MemberSession } | { state: "signed-out" | "not-live" | "unconfigured" };
+
+async function studioAccess(): Promise<StudioAccess> {
+  if (!supabase) return { state: "unconfigured" };
+  const member = await currentMember();
+  if (member) return { state: "ready", member };
+  const { data } = await supabase.auth.getSession();
+  return { state: data.session?.user ? "not-live" : "signed-out" };
+}
+
+function studioGate(access: StudioAccess): string {
+  const s = copy.studio;
+  const message = access.state === "unconfigured" ? copy.messages.configMissing
+    : access.state === "not-live" ? s.notLive : s.signedOut;
+  const action = access.state === "signed-out" ? ` <a href="#signin">${escapeHtml(copy.brand.signIn)}</a>` : "";
+  return `<div class="stack"><h2 class="h">${escapeHtml(s.title)}</h2><p class="intro">${escapeHtml(s.lead)}</p><div class="empty">${escapeHtml(message)}${action}</div></div>`;
+}
+
+function roomStatusLabel(room: RoomRow): string {
+  return room.status === "active" ? copy.studio.statusActive : copy.studio.statusDrafting;
+}
+
+async function studioView(): Promise<string> {
+  const s = copy.studio;
+  const access = await studioAccess();
+  if (access.state !== "ready" || !supabase) return studioGate(access);
+  const { data: rooms, error } = await supabase.from("rooms").select("*").order("created_at", { ascending: false });
+  if (error) showToast(`${s.error} ${error.message}`);
+  const list = (rooms ?? []).map((room) => `<div class="card"><p class="eyebrow">${escapeHtml(roomStatusLabel(room))}</p><h4><a href="#room-${escapeHtml(room.id)}">${escapeHtml(room.title)}</a></h4><span class="note">${escapeHtml(room.status === "active" ? room.stage : s.nextDrafting)}</span><a class="btn" href="#room-${escapeHtml(room.id)}">${escapeHtml(s.open)}</a></div>`).join("");
+  return `<div class="stack studio"><h2 class="h">${escapeHtml(s.title)}</h2><p class="intro">${escapeHtml(s.lead)}</p>
+    <h3 class="crate"><span>${escapeHtml(s.myRooms)}</span></h3>
+    <div class="cards">${list || `<div class="empty">${escapeHtml(s.noRooms)}</div>`}</div>
+    <form class="stack studio-form" id="create-room-form">
+      <h3 class="crate"><span>${escapeHtml(s.newRoom)}</span></h3>
+      <label for="room-title">${escapeHtml(s.roomTitle)}</label>
+      <input id="room-title" name="title" maxlength="120" required placeholder="${escapeHtml(s.roomTitlePlaceholder)}">
+      <button class="btn yellow" type="submit">${escapeHtml(s.create)}</button>
+    </form></div>`;
+}
+
+function wireStudio(): void {
+  const form = appView.querySelector<HTMLFormElement>("#create-room-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    const title = String(new FormData(form).get("title") ?? "").trim();
+    if (!title) return;
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    if (button) { button.disabled = true; button.textContent = copy.studio.creating; }
+    const { data, error } = await supabase.rpc("create_room", { p_title: title });
+    if (error || !data) {
+      showToast(`${copy.studio.error} ${error?.message ?? ""}`);
+      if (button) { button.disabled = false; button.textContent = copy.studio.create; }
+      return;
+    }
+    location.hash = `#room-${data}`;
+  });
+}
+
+function shortDate(value: string | null | undefined): string {
+  return (value ?? "").slice(0, 10);
+}
+
+function logLine(entry: RoomLogRow, names: Map<string, string>): string {
+  const s = copy.studio;
+  const actor = entry.actor ? names.get(entry.actor) ?? copy.collab.unknownMember : "";
+  const detail = entry.detail ?? {};
+  const actions = s.logActions as Record<string, string>;
+  const verb = actions[entry.action] ?? entry.action;
+  let extra = "";
+  if (entry.action === "member_added" || entry.action === "member_removed") extra = String(detail.name ?? "");
+  if (entry.action === "link_added") extra = String(detail.label ?? "");
+  if (entry.action === "next_step") extra = [detail.stage, detail.owner, detail.note].filter(Boolean).map(String).join(" · ");
+  if (entry.action === "split_signed" && Array.isArray(detail.split)) {
+    extra = (detail.split as { name?: string; percent?: number }[]).map((item) => `${item.name ?? ""} ${item.percent ?? 0}%`).join(", ");
+  }
+  const who = entry.action === "split_signed" ? "" : `<b>${escapeHtml(actor)}</b> `;
+  return `<li><span class="m">${escapeHtml(shortDate(entry.created_at))}</span> ${who}${escapeHtml(verb)}${extra ? ` ${escapeHtml(extra)}` : ""}</li>`;
+}
+
+async function roomView(roomId: string): Promise<string> {
+  const s = copy.studio;
+  const access = await studioAccess();
+  if (access.state !== "ready" || !supabase) return studioGate(access);
+  const me = access.member;
+  const [roomResult, membersResult, linksResult, logResult] = await Promise.all([
+    supabase.from("rooms").select("*").eq("id", roomId).maybeSingle(),
+    supabase.from("room_members").select("*").eq("room_id", roomId).order("added_at"),
+    supabase.from("room_links").select("*").eq("room_id", roomId).order("created_at", { ascending: false }),
+    supabase.from("room_log").select("*").eq("room_id", roomId).order("id", { ascending: false }).limit(60),
+  ]);
+  const room = roomResult.data;
+  if (!room) return `<div class="stack"><a href="#studio">${escapeHtml(s.back)}</a><div class="empty">${escapeHtml(s.notFound)}</div></div>`;
+  const members = membersResult.data ?? [];
+  const links = linksResult.data ?? [];
+  const log = logResult.data ?? [];
+  const ids = [...new Set([...members.map((m) => m.profile_id), ...links.map((l) => l.added_by), ...log.map((e) => e.actor)].filter((id): id is string => Boolean(id)))];
+  const { data: people } = ids.length ? await supabase.from("profiles").select("id,name,slug").in("id", ids) : { data: [] };
+  const names = new Map((people ?? []).map((person) => [person.id, person.name]));
+  const slugs = new Map((people ?? []).map((person) => [person.id, person.slug]));
+  const isCreator = room.created_by === me.userId;
+  const drafting = room.status === "drafting_split";
+  const editable = isCreator && drafting;
+  const mine = members.find((m) => m.profile_id === me.userId);
+  const total = members.reduce((sum, m) => sum + Number(m.percent), 0);
+  const nameOf = (id: string | null) => (id ? names.get(id) ?? copy.collab.unknownMember : s.nextNobody);
+  const personLink = (id: string) => slugs.get(id)
+    ? `<a href="#artist-${escapeHtml(slugs.get(id))}">${escapeHtml(nameOf(id))}</a>` : escapeHtml(nameOf(id));
+
+  const next = drafting
+    ? escapeHtml(s.nextDrafting)
+    : `<b>${escapeHtml(room.stage)}</b> · ${escapeHtml(nameOf(room.next_owner))}${room.next_owner ? `’s ${escapeHtml(s.turnOf)}` : ""}${room.next_note ? ` · ${escapeHtml(room.next_note)}` : ""}`;
+
+  const rows = members.map((m) => {
+    const signedCell = m.accepted_at ? `<span class="signed">${escapeHtml(s.signed)} ${escapeHtml(shortDate(m.accepted_at))}</span>` : `<span class="m">${escapeHtml(s.notSigned)}</span>`;
+    if (editable) {
+      const removeButton = m.profile_id === me.userId ? "" : `<button class="btn" type="button" data-remove-member="${escapeHtml(m.profile_id)}">${escapeHtml(s.remove)}</button>`;
+      return `<tr data-member="${escapeHtml(m.profile_id)}"><td>${personLink(m.profile_id)}</td><td><input name="role" maxlength="60" value="${escapeHtml(m.role)}" aria-label="${escapeHtml(s.role)}"></td><td><input name="percent" type="number" min="0" max="100" step="0.01" value="${escapeHtml(Number(m.percent))}" aria-label="${escapeHtml(s.share)}"></td><td>${signedCell}</td><td>${removeButton}</td></tr>`;
+    }
+    return `<tr><td>${personLink(m.profile_id)}</td><td>${escapeHtml(m.role)}</td><td>${escapeHtml(Number(m.percent))}%</td><td>${signedCell}</td><td></td></tr>`;
+  }).join("");
+
+  const acceptButton = drafting && mine && !mine.accepted_at
+    ? `<button class="btn yellow" type="button" id="accept-split">${escapeHtml(s.accept)}</button>` : "";
+  const signedNote = !drafting && room.signed_at ? `<p class="note">${escapeHtml(s.signedOn)} ${escapeHtml(shortDate(room.signed_at))}.</p>` : "";
+  const addMember = editable && members.length < 6 ? `<form class="studio-form stack" id="add-member-form">
+      <h4 class="crate"><span>${escapeHtml(s.addMember)}</span></h4>
+      <label for="member-slug">${escapeHtml(s.memberSlug)}</label>
+      <input id="member-slug" name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autocapitalize="none">
+      <span class="note">${escapeHtml(s.memberSlugHint)}</span>
+      <label for="member-role">${escapeHtml(s.memberRole)}</label>
+      <input id="member-role" name="role" maxlength="60">
+      <button class="btn" type="submit">${escapeHtml(s.add)}</button>
+    </form>` : "";
+
+  const split = `<section class="about-section"><p class="eyebrow">01</p><h3 class="about-title">${escapeHtml(s.splitTitle)}</h3>
+    <p class="note">${escapeHtml(s.splitHelp)}</p>
+    <form id="split-form"><div class="table-wrap"><table class="split-table">
+      <thead><tr><th>${escapeHtml(s.member)}</th><th>${escapeHtml(s.role)}</th><th>${escapeHtml(s.share)}</th><th>${escapeHtml(s.signed)}</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>${escapeHtml(s.total)}</td><td></td><td><b id="split-total" class="${total === 100 ? "ok" : "off"}">${escapeHtml(Math.round(total * 100) / 100)}%</b></td><td></td><td></td></tr></tfoot>
+    </table></div>
+    ${editable ? `<button class="btn" type="submit">${escapeHtml(s.saveSplit)}</button>` : ""}</form>
+    ${acceptButton}${signedNote}${addMember}</section>`;
+
+  const kinds = s.kinds as Record<string, string>;
+  const linkItems = links.map((link) => {
+    const href = safeUrl(link.url);
+    return `<div class="card"><p class="eyebrow">${escapeHtml(kinds[link.kind] ?? link.kind)}</p><h4>${escapeHtml(link.label)}</h4>${link.note ? `<span>${escapeHtml(link.note)}</span>` : ""}<span class="note">${escapeHtml(s.by)} ${escapeHtml(nameOf(link.added_by))} · ${escapeHtml(shortDate(link.created_at))}</span>${href ? `<a class="btn uv" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.open)}</a>` : ""}</div>`;
+  }).join("");
+  const files = `<section class="about-section"><p class="eyebrow">02</p><h3 class="about-title">${escapeHtml(s.filesTitle)}</h3>
+    ${drafting ? `<div class="empty">${escapeHtml(s.filesLocked)}</div>` : `<p class="note">${escapeHtml(s.filesHelp)}</p>
+    <div class="cards">${linkItems || `<div class="empty">${escapeHtml(s.noFiles)}</div>`}</div>
+    <form class="studio-form stack" id="add-link-form">
+      <label for="link-label">${escapeHtml(s.linkLabel)}</label>
+      <input id="link-label" name="label" maxlength="120" required placeholder="${escapeHtml(s.linkLabelPlaceholder)}">
+      <label for="link-url">${escapeHtml(s.linkUrl)}</label>
+      <input id="link-url" name="url" type="url" required placeholder="https://">
+      <label for="link-kind">${escapeHtml(s.linkKind)}</label>
+      <select id="link-kind" name="kind">${Object.entries(kinds).map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select>
+      <label for="link-note">${escapeHtml(s.linkNote)}</label>
+      <input id="link-note" name="note" maxlength="280" placeholder="${escapeHtml(s.linkNotePlaceholder)}">
+      <button class="btn uv" type="submit">${escapeHtml(s.addLink)}</button>
+    </form>`}</section>`;
+
+  const stageIndex = s.stages.indexOf(room.stage as (typeof s.stages)[number]);
+  const workflow = drafting ? "" : `<section class="about-section"><p class="eyebrow">03</p><h3 class="about-title">${escapeHtml(s.workflowTitle)}</h3>
+    <ol class="stages">${s.stages.map((stage, index) => `<li class="${index < stageIndex ? "done" : index === stageIndex ? "current" : ""}">${escapeHtml(stage)}</li>`).join("")}</ol>
+    <form class="studio-form stack" id="next-step-form">
+      <label for="next-stage">${escapeHtml(s.nextStage)}</label>
+      <select id="next-stage" name="stage">${s.stages.map((stage) => `<option${stage === room.stage ? " selected" : ""}>${escapeHtml(stage)}</option>`).join("")}</select>
+      <label for="next-owner">${escapeHtml(s.nextOwner)}</label>
+      <select id="next-owner" name="owner">${members.map((m) => `<option value="${escapeHtml(m.profile_id)}"${m.profile_id === room.next_owner ? " selected" : ""}>${escapeHtml(nameOf(m.profile_id))}</option>`).join("")}</select>
+      <label for="next-note">${escapeHtml(s.nextNote)}</label>
+      <input id="next-note" name="note" maxlength="280" value="${escapeHtml(room.next_note)}">
+      <button class="btn yellow" type="submit">${escapeHtml(s.saveNext)}</button>
+    </form></section>`;
+
+  const timeline = `<section class="about-section"><p class="eyebrow">${drafting ? "03" : "04"}</p><h3 class="about-title">${escapeHtml(s.logTitle)}</h3>
+    <ul class="room-log">${log.map((entry) => logLine(entry, names)).join("")}</ul></section>`;
+
+  return `<div class="stack studio room" data-room="${escapeHtml(room.id)}">
+    <a href="#studio">${escapeHtml(s.back)}</a>
+    <p class="eyebrow">${escapeHtml(roomStatusLabel(room))}</p>
+    <h2 class="h">${escapeHtml(room.title)}</h2>
+    <div class="next-line"><span class="eyebrow">${escapeHtml(s.nextLabel)}</span><p>${next}</p></div>
+    ${split}${files}${workflow}${timeline}</div>`;
+}
+
+function wireRoom(roomId: string): void {
+  if (!supabase) return;
+  const client = supabase;
+  const s = copy.studio;
+  const run = async (call: () => PromiseLike<{ error: { message: string } | null }>, success: string) => {
+    const { error } = await call();
+    if (error) {
+      showToast(`${s.error} ${error.message}`);
+      return;
+    }
+    showToast(success);
+    await render();
+  };
+  const splitForm = appView.querySelector<HTMLFormElement>("#split-form");
+  const updateTotal = () => {
+    const sum = [...appView.querySelectorAll<HTMLInputElement>("#split-form input[name=percent]")].reduce((acc, input) => acc + (Number(input.value) || 0), 0);
+    const totalEl = appView.querySelector<HTMLElement>("#split-total");
+    if (totalEl) {
+      totalEl.textContent = `${Math.round(sum * 100) / 100}%`;
+      totalEl.className = Math.abs(sum - 100) < 0.001 ? "ok" : "off";
+    }
+  };
+  splitForm?.addEventListener("input", updateTotal);
+  splitForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const splits = [...splitForm.querySelectorAll<HTMLTableRowElement>("tr[data-member]")].map((row) => ({
+      profile_id: row.dataset.member ?? "",
+      percent: Number(row.querySelector<HTMLInputElement>("input[name=percent]")?.value ?? 0),
+      role: row.querySelector<HTMLInputElement>("input[name=role]")?.value.trim() ?? "",
+    }));
+    void run(() => client.rpc("set_room_split", { p_room: roomId, p_splits: splits }), s.splitSaved);
+  });
+  appView.querySelectorAll<HTMLButtonElement>("[data-remove-member]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!window.confirm(s.removeConfirm)) return;
+      void run(() => client.rpc("remove_room_member", { p_room: roomId, p_profile: button.dataset.removeMember ?? "" }), s.splitSaved);
+    });
+  });
+  appView.querySelector<HTMLButtonElement>("#accept-split")?.addEventListener("click", async () => {
+    const { data, error } = await client.rpc("accept_room_split", { p_room: roomId });
+    if (error) {
+      showToast(`${s.error} ${error.message}`);
+      return;
+    }
+    showToast(data === "active" ? s.allSigned : s.accepted);
+    await render();
+  });
+  const memberForm = appView.querySelector<HTMLFormElement>("#add-member-form");
+  memberForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = new FormData(memberForm);
+    void run(() => client.rpc("add_room_member", {
+      p_room: roomId,
+      p_slug: String(values.get("slug") ?? "").trim().toLowerCase(),
+      p_role: String(values.get("role") ?? "").trim(),
+    }), s.splitSaved);
+  });
+  const linkForm = appView.querySelector<HTMLFormElement>("#add-link-form");
+  linkForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = new FormData(linkForm);
+    const url = safeUrl(String(values.get("url") ?? "").trim());
+    if (!url) {
+      showToast(copy.collab.callLinkInvalid);
+      return;
+    }
+    void run(() => client.rpc("add_room_link", {
+      p_room: roomId,
+      p_label: String(values.get("label") ?? "").trim(),
+      p_url: url,
+      p_kind: String(values.get("kind") ?? "other"),
+      p_note: String(values.get("note") ?? "").trim(),
+    }), s.linkAdded);
+  });
+  const nextForm = appView.querySelector<HTMLFormElement>("#next-step-form");
+  nextForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = new FormData(nextForm);
+    void run(() => client.rpc("set_room_next_step", {
+      p_room: roomId,
+      p_stage: String(values.get("stage") ?? "Idea"),
+      p_next_owner: String(values.get("owner") ?? "") || null,
+      p_note: String(values.get("note") ?? "").trim(),
+    }), s.nextSaved);
+  });
+}
+
 function aboutView(): string {
   const a = copy.about;
   const section = (eyebrow: string, title: string, body: string) =>
@@ -1123,11 +1448,12 @@ function routeName(): { view: string; arg: string } {
     return { view: "channel", arg: "" };
   }
   const route = hash.slice(1);
+  if (route.startsWith("room-")) return { view: "room", arg: route.slice("room-".length) };
   return route.startsWith("artist-")
     ? { view: "artist", arg: route.slice("artist-".length) }
     : route === "curator"
       ? { view: "join", arg: "curator" }
-      : { view: ["channel", "about", "library", "artists", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
+      : { view: ["channel", "about", "library", "artists", "studio", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
 }
 
 async function getLiveProfiles(): Promise<Artist[]> {
@@ -1486,7 +1812,7 @@ async function render(): Promise<void> {
   document.querySelector("#auth-callback-message")?.remove();
   const route = routeName();
   document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((link) => {
-    const target = route.view === "artist" ? "artists" : route.view;
+    const target = route.view === "artist" ? "artists" : route.view === "room" ? "studio" : route.view;
     link.setAttribute("aria-current", link.getAttribute("href") === `#${target}` ? "page" : "false");
   });
   const liveArtists = route.view === "artists" || route.view === "artist" ? await getLiveProfiles() : [];
@@ -1494,6 +1820,14 @@ async function render(): Promise<void> {
     case "about":
       appView.innerHTML = aboutView();
       wireSubscriberForms();
+      return;
+    case "studio":
+      appView.innerHTML = await studioView();
+      wireStudio();
+      return;
+    case "room":
+      appView.innerHTML = await roomView(route.arg);
+      wireRoom(route.arg);
       return;
     case "library":
       appView.innerHTML = libraryView();
