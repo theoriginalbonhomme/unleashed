@@ -492,7 +492,12 @@ const artistName = (slug: string): string => staticArtist(slug)?.name ?? slug;
 function platform(value: string): string {
   const url = safeUrl(value);
   if (!url) return copy.profile.link;
-  const host = new URL(url).hostname.toLowerCase();
+  const parsed = new URL(url);
+  const host = parsed.hostname.toLowerCase();
+  if (host === "theoriginalbonhomme.github.io") {
+    if (parsed.pathname.startsWith("/nii-palju-tahendusi")) return copy.brand.platforms.niiPalju;
+    if (parsed.pathname.startsWith("/rhyme-rumble")) return copy.brand.platforms.rhymeRumble;
+  }
   if (host === "soundcloud.com" || host.endsWith(".soundcloud.com")) return copy.brand.platforms.soundcloud;
   if (host === "mixcloud.com" || host.endsWith(".mixcloud.com")) return copy.brand.platforms.mixcloud;
   if (host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be") return copy.brand.platforms.youtube;
@@ -708,8 +713,8 @@ function incognitoProfile(artist: Artist): string {
 function card(artist: Artist): string {
   if (artist.incognito) return incognitoCard(artist);
   const firstLookingForLine = (artist.looking_for ?? "").split(/\r?\n/).find((line) => line.trim())?.replace(/^- /, "") ?? "";
-  const image = assetPath(artist.photo) || sealUrl;
-  return `<article class="card"><img class="card-seal" src="${escapeHtml(image)}" alt="" width="48" height="48"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
+  const image = assetPath(artist.photo);
+  return `<article class="card">${image ? `<img class="card-seal" src="${escapeHtml(image)}" alt="" width="48" height="48">` : ""}<div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
     <h4><a href="#artist-${encodeURIComponent(artist.slug)}">${escapeHtml(artist.name)}</a></h4>${artist.based ? `<span class="note based-line">${escapeHtml(artist.based)}</span>` : ""}
     ${firstLookingForLine ? `<div><span class="k accent-label">${escapeHtml(copy.profile.lookingFor)}</span><br><span class="card-looking">${escapeHtml(firstLookingForLine)}</span></div>` : ""}${artist.open_to_unleash !== false ? `<span class="open accent-yellow">${escapeHtml(copy.profile.openToUnleash)}</span>` : ""}</article>`;
 }
@@ -749,7 +754,11 @@ function profile(artist: Artist): string {
   const playlistItems = selectedPlaylist ? new Set(selectedPlaylist.items) : null;
   const profileWorks = (group: "dj" | "production" | "unleashed") => releasesForArtist
     .filter((release) => workGroup(release) === group && (!playlistItems || playlistItems.has(release.id)));
-  const portrait = assetPath(artist.photo) || sealUrl;
+  const portrait = assetPath(artist.photo);
+  const initials = artist.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const portraitMarkup = portrait
+    ? `<img class="portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(copy.profile.portraitAlt)} ${escapeHtml(artist.name)}" width="640" height="640">`
+    : `<div class="portrait portrait-initials" aria-hidden="true">${escapeHtml(initials)}</div>`;
   const wordmark = assetPath(artist.wordmark);
   const inviter = artist.inviter;
   const links = (artist.links ?? []).map((link) => {
@@ -763,7 +772,7 @@ function profile(artist: Artist): string {
   ] as const;
   return `<div class="stack" style="gap:24px"><a class="back" href="#artists">${escapeHtml(copy.profile.back)}</a>
     <section class="hero">
-      <img class="portrait" src="${escapeHtml(portrait)}" alt="${escapeHtml(copy.profile.portraitAlt)} ${escapeHtml(artist.name)}" width="640" height="640">
+      ${portraitMarkup}
       <div class="hero-txt"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
         ${wordmark ? `<h2 class="h" style="margin:0"><img class="wmark" src="${escapeHtml(wordmark)}" alt="${escapeHtml(artist.name)}"></h2>` : `<h2 class="h">${escapeHtml(artist.name)}</h2>`}
         ${artist.aliases?.length ? `<span class="k">${escapeHtml(copy.profile.alsoKnownAs)} ${artist.aliases.map(escapeHtml).join(" · ")}</span>` : ""}
@@ -777,8 +786,8 @@ function profile(artist: Artist): string {
       : "").join("")}
     ${artistPlaylists.length ? `<div class="tools"><span class="k">${escapeHtml(copy.profile.playlists)}</span><button class="chip" data-pl="All" aria-pressed="${!selectedPlaylist}">${escapeHtml(copy.profile.everything)}</button>${artistPlaylists.map((playlist) => `<button class="chip" data-pl="${escapeHtml(playlist.id)}" aria-pressed="${selectedPlaylist?.id === playlist.id}">${escapeHtml(playlist.title)} · ${playlist.items.length}</button>`).join("")}</div>` : ""}
     <div class="stack profile-works">
-      ${workSection(copy.profile.djSets, profileWorks("dj"), copy.profile.nothingYet)}
-      ${workSection(copy.profile.productions, profileWorks("production"), copy.profile.nothingYet)}
+      ${profileWorks("dj").length ? workSection(copy.profile.djSets, profileWorks("dj"), copy.profile.nothingYet) : ""}
+      ${profileWorks("production").length ? workSection(copy.profile.productions, profileWorks("production"), copy.profile.nothingYet) : ""}
       ${workSection(copy.profile.unleashed, profileWorks("unleashed"), copy.profile.firstUnleash, true)}
     </div></div>`;
 }
@@ -1377,7 +1386,8 @@ function pressView(): string {
     `<div class="cards">${p.values.map((item) => `<div class="card"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(item.text)}</span></div>`).join("")}</div>`);
   const caseStudy = section(p.caseEyebrow, p.caseTitle,
     `<p class="lead">${escapeHtml(p.caseLead)}</p>
-    <div class="press-works">${p.caseWorks.map((work) => `<div class="press-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span></div>`).join("")}</div>
+    <div class="press-works">${p.caseWorks.map((work) => `<div class="press-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span>${work.href ? `<a class="btn solid" href="${escapeHtml(work.href)}" target="_blank" rel="noopener">${escapeHtml(work.cta)}</a>` : ""}</div>`).join("")}</div>
+    <p><a class="btn" href="#artist-kati-murutar">${escapeHtml(p.caseProfile)}</a></p>
     <h4 class="crate"><span>${escapeHtml(p.caseDidTitle)}</span></h4>
     <ul class="about-points">${p.caseDid.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
     <p class="about-notice">${escapeHtml(p.caseStatus)}</p>

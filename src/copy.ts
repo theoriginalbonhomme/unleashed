@@ -9,6 +9,8 @@ export const copy = {
       mixcloud: "Mixcloud",
       youtube: "YouTube",
       bandcamp: "Bandcamp",
+      niiPalju: "Play Nii palju tähendusi!",
+      rhymeRumble: "Play Rhyme Rumble",
     },
     taglineFallback: "Free music for every DJ. Contribute if you want. Unleash with everyone.",
     metaDescription: "Unleashed: free music for every DJ, and a place for Unleashers to make things together. A BONHOMME platform. In service of art.",
@@ -331,9 +333,10 @@ export const copy = {
     caseTitle: "Kati Murutar and MTÜ Aabrami hobulausujad",
     caseLead: "Writer, journalist and Estonian teacher Kati Murutar brings five years of classroom material into one edition, published for her jubilee on 21 March 2027.",
     caseWorks: [
-      { title: "Meistrite aabits", text: "Two volumes, 1,408 pages: texts on Estonian language, literature and thought, and the exercises that go with them. For learners aged 7 to 107, tested with her students." },
-      { title: "Nii palju tähendusi!", text: "A card game and web app with 777 Estonian words that have more than one meaning. Built by Unleashed." },
+      { title: "Meistrite aabits", text: "Two volumes, 1,408 pages: texts on Estonian language, literature and thought, and the exercises that go with them. For learners aged 7 to 107, tested with her students.", href: "", cta: "" },
+      { title: "Nii palju tähendusi!", text: "A card game and web app with 777 Estonian words that have more than one meaning. Built by Unleashed.", href: "https://theoriginalbonhomme.github.io/nii-palju-tahendusi/", cta: "Play the game" },
     ],
+    caseProfile: "Kati Murutar's page",
     caseDidTitle: "What Unleashed does",
     caseDid: [
       "Runs the project, from budget to launch day",
