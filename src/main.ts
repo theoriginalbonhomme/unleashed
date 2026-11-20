@@ -424,6 +424,7 @@ function initialiseShell(): void {
       bonhomme: copy.brand.footerBonhomme,
       publishing: copy.brand.footerPublishing,
       platform: copy.brand.footerPlatform,
+      cofounder: copy.brand.footerCofounder,
     };
     footerLinks.querySelectorAll<HTMLAnchorElement>("a[data-foot]").forEach((link) => {
       link.textContent = footerLabels[link.dataset.foot ?? ""] ?? "";
@@ -1435,6 +1436,29 @@ function publishingView(): string {
     ${values}${caseStudy}${steps}${who}${door}</div>`;
 }
 
+function cofounderView(): string {
+  const c = copy.cofounder;
+  const mailto = `mailto:${publishingEmail}?subject=${encodeURIComponent(c.contactSubject)}`;
+  const section = (eyebrow: string, title: string, body: string) =>
+    `<section class="about-section"><p class="eyebrow">${escapeHtml(eyebrow)}</p>${title ? `<h3 class="about-title">${escapeHtml(title)}</h3>` : ""}${body}</section>`;
+  const list = (items: readonly string[]) => `<ul class="about-points">${items.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`;
+  const who = section(c.whoEyebrow, c.whoTitle, list(c.whoPoints));
+  const values = section(c.valueEyebrow, c.valueTitle,
+    `<div class="cards">${c.values.map((item) => `<div class="card"><h4>${escapeHtml(item.title)}</h4><span>${escapeHtml(item.text)}</span></div>`).join("")}</div>`);
+  const steps = section(c.stepsEyebrow, c.stepsEyebrow.replace(/^\d+ · /, ""),
+    `<div class="steps">${c.steps.map((step) => `<div class="step"><b>${escapeHtml(step.title)}</b><span>${escapeHtml(step.text)}</span></div>`).join("")}</div>`);
+  const principles = section(c.principlesEyebrow, c.principlesEyebrow.replace(/^\d+ · /, ""), list(c.principles));
+  const forWho = section(c.forEyebrow, c.forTitle, list(c.forItems));
+  const door = section(c.doorEyebrow, c.doorTitle,
+    `<p class="lead">${escapeHtml(c.doorText)}</p><p><a class="btn yellow" href="${escapeHtml(mailto)}">${escapeHtml(c.contact)}</a></p>`);
+  return `<div class="stack about cofounder">
+    <p class="eyebrow">${escapeHtml(c.eyebrow)}</p>
+    <h2 class="h">${escapeHtml(c.title)}</h2>
+    <p class="intro">${escapeHtml(c.lead)}</p>
+    <p><a class="btn uv" href="${escapeHtml(mailto)}">${escapeHtml(c.contact)}</a></p>
+    ${who}${values}${steps}${principles}${forWho}${door}</div>`;
+}
+
 function aboutView(): string {
   const a = copy.about;
   const section = (eyebrow: string, title: string, body: string) =>
@@ -1569,7 +1593,7 @@ function routeName(): { view: string; arg: string } {
     ? { view: "artist", arg: route.slice("artist-".length) }
     : route === "curator"
       ? { view: "join", arg: "curator" }
-      : { view: ["channel", "about", "library", "artists", "studio", "publishing", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
+      : { view: ["channel", "about", "library", "artists", "studio", "publishing", "cofounder", "collab", "join", "signin"].includes(route) ? route : "channel", arg: "" };
 }
 
 async function getLiveProfiles(): Promise<Artist[]> {
@@ -2173,16 +2197,18 @@ async function joinPage(): Promise<void> {
   });
 }
 
-function setSection(section: "publishing" | "platform"): void {
-  const publishing = section === "publishing";
+type SiteSection = "publishing" | "cofounder" | "platform";
+
+function setSection(section: SiteSection): void {
+  const meta = section === "publishing" ? copy.publishing : section === "cofounder" ? copy.cofounder : null;
   document.body.dataset.section = section;
   const word = document.querySelector<HTMLElement>(".word");
-  if (word) word.innerHTML = `${escapeHtml(copy.brand.titleStart)}<span>${escapeHtml(copy.brand.titleEnd)}</span>${publishing ? `<b class="word-section">${escapeHtml(copy.publishing.nav)}</b>` : ""}`;
+  if (word) word.innerHTML = `${escapeHtml(copy.brand.titleStart)}<span>${escapeHtml(copy.brand.titleEnd)}</span>${meta ? `<b class="word-section">${escapeHtml(meta.nav)}</b>` : ""}`;
   const tagline = document.querySelector<HTMLElement>("#tagline");
-  if (tagline) tagline.textContent = publishing ? copy.publishing.sectionTagline : site.tagline || copy.brand.taglineFallback;
+  if (tagline) tagline.textContent = meta ? meta.sectionTagline : site.tagline || copy.brand.taglineFallback;
   const byline = document.querySelector<HTMLElement>("#platform-line");
-  if (byline) byline.textContent = publishing ? copy.publishing.sectionByline : copy.brand.platform;
-  document.title = publishing ? copy.publishing.eyebrow : copy.brand.documentTitle;
+  if (byline) byline.textContent = meta ? meta.sectionByline : copy.brand.platform;
+  document.title = meta ? meta.eyebrow : copy.brand.documentTitle;
   document.querySelectorAll<HTMLAnchorElement>("#footer-links a[data-foot]").forEach((link) => {
     link.setAttribute("aria-current", link.dataset.foot === section ? "page" : "false");
   });
@@ -2191,7 +2217,7 @@ function setSection(section: "publishing" | "platform"): void {
 async function render(): Promise<void> {
   document.querySelector("#auth-callback-message")?.remove();
   const route = routeName();
-  setSection(route.view === "publishing" ? "publishing" : "platform");
+  setSection(route.view === "publishing" ? "publishing" : route.view === "cofounder" ? "cofounder" : "platform");
   document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((link) => {
     const target = route.view === "artist" ? "artists" : route.view === "room" ? "studio" : route.view;
     link.setAttribute("aria-current", link.getAttribute("href") === `#${target}` ? "page" : "false");
@@ -2204,6 +2230,9 @@ async function render(): Promise<void> {
       return;
     case "publishing":
       appView.innerHTML = publishingView();
+      return;
+    case "cofounder":
+      appView.innerHTML = cofounderView();
       return;
     case "studio":
       appView.innerHTML = await studioView();
