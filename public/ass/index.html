@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="ÄSS on tagasi. Badass Club ja kureeritud kunstnikusari 01: liitu klubiga ja broneeri eeltellimus.">
+<meta name="theme-color" content="#242323">
+<title>ÄSS Badass Club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Unleashed shell (charcoal, turquoise, signal yellow). One loud hero, then a straight run: club, how it works, pre-order, reserve. */
+:root{
+  --bg:#F2F0E9; --card:#FBFAF6; --ink:#242323; --dim:#4D4B48; --line:#D9D6CC;
+  --tq:#00B8C7; --tq-text:#007680; --yellow:#FFE800; --on:#242323;
+  --display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#242323; --card:#2E2D2C; --ink:#F2F0E9; --dim:#B8B4AA; --line:#403E3C; --tq-text:#00B8C7; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#242323; --card:#2E2D2C; --ink:#F2F0E9; --dim:#B8B4AA; --line:#403E3C; --tq-text:#00B8C7; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:.95;text-wrap:balance;margin:0}
+.label{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--tq-text)}
+a{color:var(--tq-text)}
+:focus-visible{outline:3px solid var(--tq);outline-offset:2px}
+
+.draft{background:var(--yellow);color:var(--on);font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+.draft .wrap{padding-block:8px}
+
+.hero{background:#242323;color:#F2F0E9;border-bottom:6px solid var(--yellow)}
+.hero .wrap{padding-block:56px 48px;display:grid;gap:28px}
+.hero .label{color:#00B8C7}
+.hero h1{font-size:clamp(64px,16vw,190px);letter-spacing:-.02em}
+.hero h1 span{color:var(--yellow)}
+.hero p{max-width:560px;font-size:19px;color:#E4E1D8;margin:0}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.btn{font-family:var(--display);font-size:16px;letter-spacing:.02em;padding:14px 22px;border:2px solid currentColor;background:transparent;color:inherit;text-decoration:none;cursor:pointer;display:inline-block}
+.btn.primary{background:var(--yellow);border-color:var(--yellow);color:#242323}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 #00B8C7}
+@media (prefers-reduced-motion:reduce){.btn:hover{transform:none}}
+.stamp{font-family:var(--mono);font-size:13px;color:#B8B4AA;display:flex;flex-wrap:wrap;gap:6px 18px}
+
+section{padding-block:56px;border-bottom:1px solid var(--line)}
+.head{display:grid;gap:10px;margin-bottom:28px;max-width:640px}
+.head h2{font-size:clamp(36px,6vw,60px)}
+.head p{margin:0;color:var(--dim)}
+
+.perks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.perk{border-top:3px solid var(--tq);padding-top:14px;min-width:0}
+.perk h3{font-size:22px;margin-bottom:6px}
+.perk p{margin:0;color:var(--dim)}
+
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;background:var(--card);border:1px solid var(--line);padding:20px;min-width:0}
+.steps li::before{content:counter(s,decimal-leading-zero);font-family:var(--mono);color:var(--tq-text);display:block;margin-bottom:8px}
+.steps b{font-family:var(--display);font-weight:400;font-size:20px;display:block;margin-bottom:4px}
+.steps span{color:var(--dim)}
+
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.prod{background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.art{aspect-ratio:4/3;max-width:100%;background:#242323;display:grid;place-items:center;position:relative;overflow:hidden}
+.art canvas{width:100%;height:100%;display:block}
+.art .tag{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;background:var(--yellow);color:#242323;padding:2px 6px}
+.pbody{padding:16px;display:grid;gap:12px;flex:1}
+.pbody h3{font-size:22px}
+.meta{font-family:var(--mono);font-size:13px;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+label{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);display:grid;gap:4px}
+select,input,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:10px;border-radius:0;width:100%}
+.qty{width:80px}
+.size{flex:1;min-width:110px}
+
+.reserve{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+@media (max-width:760px){.reserve{grid-template-columns:minmax(0,1fr)}}
+form{display:grid;gap:14px}
+.check{display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;font-family:var(--body);font-size:15px;color:var(--ink)}
+.check input{width:auto;margin-top:4px}
+.summary{background:#242323;color:#F2F0E9;padding:20px;display:grid;gap:14px;align-content:start}
+.summary .label{color:#00B8C7}
+.summary pre{font-family:var(--mono);font-size:13px;white-space:pre-wrap;word-break:break-word;margin:0;color:#E4E1D8;min-height:120px}
+.summary ol{margin:0;padding-left:20px;color:#E4E1D8}
+.handle{font-family:var(--mono);background:var(--yellow);color:#242323;padding:2px 6px;user-select:all}
+.note{font-size:14px;color:var(--dim)}
+.status{font-family:var(--mono);font-size:13px;color:#00B8C7;min-height:1.2em}
+
+footer .wrap{padding-block:32px;display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;font-family:var(--mono);font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+
+<div class="draft"><div class="wrap">MUSTAND SIRLALE · tooted, kogused ja hinnad on näidised, kuni Sirla need kinnitab</div></div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="label">ÄSS · Badass Club · Kunstnikusari 01</div>
+    <h1>ÄSS<br>is <span>back.</span></h1>
+    <p>Badass Club avab uksed. Iga sari on kureeritud: Sirla valib kunstniku, kunstnik teeb disaini. Esimene sari on piiratud, nummerdatud ja liikmetele esimesena.</p>
+    <div class="cta">
+      <a class="btn primary" href="#club">Liitu klubiga</a>
+      <a class="btn" href="#preorder">Telli ette</a>
+    </div>
+    <div class="stamp"><span>Eelmüük ainult oma inimestele</span><span>Iga ese nummerdatud</span><span>Klubiõhtud koos muusikaga</span></div>
+  </div>
+</header>
+
+<main>
+  <section id="club"><div class="wrap">
+    <div class="head">
+      <div class="label">Badass Club</div>
+      <h2>Klubi, mitte kollektsioon.</h2>
+      <p>Badass Club jäi Ässa ajal pooleli. Nüüd on see comebacki süda: väike ring inimesi, kes saavad asju esimesena ja on õhtutel kohal.</p>
+    </div>
+    <div class="perks">
+      <div class="perk"><h3>Kureeritud kunstnikud</h3><p>Igal sarjal on oma kunstnik, kelle Sirla on välja valinud. Ässa käekiri, uus hääl.</p></div>
+      <div class="perk"><h3>Esimene ligipääs</h3><p>Liikmed näevad ja tellivad iga sarja enne, kui see kuskile mujale jõuab.</p></div>
+      <div class="perk"><h3>Nummerdatud esemed</h3><p>Iga ese kannab oma numbrit. Kui sari on läbi, siis on läbi.</p></div>
+      <div class="perk"><h3>Klubiõhtud</h3><p>Sarja launch'id koos DJ-settidega. Liikmed on külaliste nimekirjas.</p></div>
+      <div class="perk"><h3>Kutse sõbrale</h3><p>Liige võib kutsuda sõbra ja vastutab tema eest. Nii jääb ring omaks.</p></div>
+      <div class="perk"><h3>Kunstnik saab osa</h3><p>Iga müüdud eseme pealt läheb osa sarja kunstnikule.</p></div>
+    </div>
+  </div></section>
+
+  <section><div class="wrap">
+    <div class="head">
+      <div class="label">Kuidas see käib</div>
+      <h2>Kolm sammu.</h2>
+    </div>
+    <ol class="steps">
+      <li><b>Liitu Badass Clubiga</b><span>Liikmesus on tasuta. Märgi allpool, et soovid liituda.</span></li>
+      <li><b>Broneeri oma ese</b><span>Vali suurus ja kogus. Eeltellimus on broneering, mitte veel makse.</span></li>
+      <li><b>Kinnitame ja trükime</b><span>Kui sari on kinnitatud, saadame maksejuhised isiklikult. Siis läheb trükki.</span></li>
+    </ol>
+  </div></section>
+
+  <section id="preorder"><div class="wrap">
+    <div class="head">
+      <div class="label">Eeltellimus · Kunstnikusari 01</div>
+      <h2>Vali oma tükk.</h2>
+      <p>Disain avalikustatakse liikmetele. Allolev on näidis, et näeks, kuidas eeltellimus töötab.</p>
+    </div>
+    <div class="products" id="products"></div>
+  </div></section>
+
+  <section id="reserve"><div class="wrap">
+    <div class="head">
+      <div class="label">Broneeri</div>
+      <h2>Saada oma broneering.</h2>
+      <p>Täida väljad. Leht koostab sõnumi, mille saadad Ässale Instagramis. Nii jõuab broneering otse Sirlani.</p>
+    </div>
+    <div class="reserve">
+      <form id="form" novalidate>
+        <label for="f-name">Nimi<input id="f-name" name="name" autocomplete="name" placeholder="Eesnimi Perenimi"></label>
+        <label for="f-contact">Instagram või e-post<input id="f-contact" name="contact" placeholder="@kasutaja või nimi@post.ee"></label>
+        <label for="f-invite">Kes sind kutsus? (valikuline)<input id="f-invite" name="invite" placeholder="Nimi"></label>
+        <label class="check" for="f-club"><input type="checkbox" id="f-club" checked> Soovin liituda Badass Clubiga</label>
+        <label for="f-note">Märkus (valikuline)<textarea id="f-note" rows="3" placeholder="Näiteks soovid numbrit või kingiks pakkimist"></textarea></label>
+        <button class="btn primary" type="submit">Koosta broneering</button>
+        <div class="status" id="formStatus" role="status"></div>
+        <p class="note">Midagi ei maksta enne, kui sari on kinnitatud. Sinu andmeid kasutame ainult selle broneeringu jaoks.</p>
+      </form>
+      <aside class="summary" aria-live="polite">
+        <div class="label">Sinu broneering</div>
+        <pre id="summary">Vali ülal tooted ja täida väljad. Siin tekib sõnum, mille saad kopeerida.</pre>
+        <button class="btn primary" type="button" id="copy" hidden>Kopeeri sõnum</button>
+        <div class="status" id="copyStatus" role="status"></div>
+        <ol>
+          <li>Kopeeri sõnum.</li>
+          <li>Ava Instagram ja saada see kontole <span class="handle">@2ss.2ss.2ss</span></li>
+          <li>Vastame ja kinnitame broneeringu.</li>
+        </ol>
+        <a href="https://www.instagram.com/2ss.2ss.2ss/" target="_blank" rel="noopener" style="color:#FFE800">Ava Ässa Instagram</a>
+      </aside>
+    </div>
+  </div></section>
+</main>
+
+<footer><div class="wrap">
+  <span>ÄSS · Badass Club</span>
+  <a href="../" style="color:inherit">Launch koos Unleashed · In service of art</a>
+</div></footer>
+
+<script>
+const PRODUCTS=[
+  {id:"tee",name:"Särk · Sari 01",type:"Trükitud T-särk",run:"Näidis: 50 tk",sizes:["XS","S","M","L","XL","XXL"],seed:3},
+  {id:"hoodie",name:"Kapuuts · Sari 01",type:"Trükitud kapuutsiga pusa",run:"Näidis: 30 tk",sizes:["S","M","L","XL","XXL"],seed:7},
+  {id:"print",name:"Kunstiprint · Sari 01",type:"Signeeritud print, A3",run:"Näidis: 25 tk",sizes:["A3"],seed:11}
+];
+const cart={};
+const el=(t,a={},...k)=>{const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==="text")e.textContent=v;else e.setAttribute(n,v)}k.forEach(c=>e.append(c));return e};
+
+function drawArt(cv,seed){
+  const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=Math.max(1,r.width*dpr);cv.height=Math.max(1,r.height*dpr);
+  const g=cv.getContext("2d"),w=cv.width,h=cv.height;let s=seed;
+  const rnd=()=>{s=(s*9301+49297)%233280;return s/233280};
+  g.fillStyle="#242323";g.fillRect(0,0,w,h);
+  for(let i=0;i<70;i++){g.globalAlpha=.15+rnd()*.5;g.fillStyle=rnd()>.5?"#00B8C7":"#FFE800";
+    const x=rnd()*w,y=rnd()*h,rad=(2+rnd()*18)*dpr;g.beginPath();g.arc(x,y,rad,0,7);g.fill()}
+  g.globalAlpha=1;g.fillStyle="#F2F0E9";g.font=`${Math.round(h*.42)}px "Archivo Black", Impact, sans-serif`;
+  g.textAlign="center";g.textBaseline="middle";g.fillText("ÄSS",w/2,h*.54);
+}
+
+const wrap=document.getElementById("products");
+PRODUCTS.forEach(p=>{
+  const cv=el("canvas",{"aria-hidden":"true"});
+  const size=el("select",{id:"size-"+p.id,"aria-label":"Suurus: "+p.name});
+  p.sizes.forEach(z=>size.append(el("option",{value:z,text:z})));
+  const qty=el("select",{id:"qty-"+p.id,class:"qty","aria-label":"Kogus: "+p.name});
+  [0,1,2,3].forEach(n=>qty.append(el("option",{value:n,text:String(n)})));
+  const upd=()=>{const q=+qty.value;if(q>0)cart[p.id]={name:p.name,size:size.value,qty:q};else delete cart[p.id];render()};
+  size.addEventListener("change",upd);qty.addEventListener("change",upd);
+  const card=el("article",{class:"prod"},
+    el("div",{class:"art"},cv,el("span",{class:"tag",text:"Disain liikmetele"})),
+    el("div",{class:"pbody"},
+      el("h3",{text:p.name}),
+      el("div",{class:"meta"},el("span",{text:p.type}),el("span",{text:p.run})),
+      el("div",{class:"meta"},el("span",{text:"Hind kinnitatakse liikmetele"})),
+      el("div",{class:"row"},el("label",{class:"size"},"Suurus",size),el("label",{},"Kogus",qty))
+    ));
+  wrap.append(card);
+  requestAnimationFrame(()=>drawArt(cv,p.seed));
+  window.addEventListener("resize",()=>drawArt(cv,p.seed));
+});
+document.fonts&&document.fonts.ready.then(()=>document.querySelectorAll(".art canvas").forEach((c,i)=>drawArt(c,PRODUCTS[i].seed)));
+
+const $=id=>document.getElementById(id);
+let built=false;
+function message(){
+  const lines=["Yo, ÄSS! Broneering Badass Club'i launchile.",""];
+  lines.push("Nimi: "+($("f-name").value.trim()||"—"));
+  lines.push("Kontakt: "+($("f-contact").value.trim()||"—"));
+  if($("f-invite").value.trim())lines.push("Kutsus: "+$("f-invite").value.trim());
+  lines.push("Badass Club: "+($("f-club").checked?"jah, liitun":"ei praegu"));
+  const items=Object.values(cart);
+  lines.push("");
+  lines.push(items.length?"Eeltellimus:":"Eeltellimus: ainult liikmesus, tooteid veel ei vali");
+  items.forEach(i=>lines.push(`- ${i.name}, suurus ${i.size}, ${i.qty} tk`));
+  if($("f-note").value.trim()){lines.push("");lines.push("Märkus: "+$("f-note").value.trim())}
+  return lines.join("\n");
+}
+function render(){if(built)$("summary").textContent=message()}
+["f-name","f-contact","f-invite","f-note"].forEach(i=>$(i).addEventListener("input",render));
+$("f-club").addEventListener("change",render);
+
+$("form").addEventListener("submit",e=>{
+  e.preventDefault();
+  if(!$("f-name").value.trim()||!$("f-contact").value.trim()){
+    $("formStatus").textContent="Lisa nimi ja kontakt, et saaksime sulle vastata.";return}
+  if(!$("f-club").checked&&!Object.keys(cart).length){
+    $("formStatus").textContent="Märgi liitumine või vali vähemalt üks toode.";return}
+  $("formStatus").textContent="Broneering on valmis. Kopeeri see paremalt.";
+  built=true;render();$("copy").hidden=false;
+});
+$("copy").addEventListener("click",()=>{
+  const t=$("summary").textContent;
+  const done=()=>{$("copyStatus").textContent="Kopeeritud. Saada see nüüd Instagramis."};
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents($("summary"));const s=getSelection();s.removeAllRanges();s.addRange(r);$("copyStatus").textContent="Tekst on valitud. Kopeeri see käsitsi."};
+  try{navigator.clipboard.writeText(t).then(done,fallback)}catch(err){fallback()}
+});
+</script>
+
+</body>
+</html>

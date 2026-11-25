@@ -39,6 +39,7 @@ export const copy = {
     footerPublishing: "Unleashed Publishing",
     footerPlatform: "Unleashed Platform",
     footerCofounder: "Co-founder as a service",
+    footerAss: "ÄSS · Badass Club",
     loading: "Loading the crate…",
   },
   library: {
