@@ -27,9 +27,23 @@ const duration = (seconds) => {
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 };
 
+const capitalise = (text) => text.replace(/(^|[\s-])(\p{Ll})/gu, (_, gap, letter) => gap + letter.toUpperCase());
+
 const placeFrom = (title) => {
-  const match = String(title).match(/@\s*(.+)$/);
-  return match ? match[1].trim() : "";
+  const match = String(title).match(/@\s*([^,]+)/);
+  return match ? capitalise(match[1].trim()) : "";
+};
+
+// Mixcloud names look like "Rickyvonmond - Technosunday251026@ntungamo" or "smoothsession 14.10.26 @ Kampala".
+// The site shows them as "Technosunday @ Ntungamo": no artist prefix (the artist is shown separately),
+// no date (shown separately), place capitalised.
+const cleanTitle = (name) => {
+  let title = String(name).trim().replace(/^rickyvonmond\s*-\s*/i, "");
+  const place = placeFrom(title);
+  title = title.replace(/@.*$/, "");
+  title = title.replace(/\b\d{1,2}\.\d{1,2}(\.\d{2,4})?\b/g, "").replace(/\d{6}$/, "").replace(/\s{2,}/g, " ").trim();
+  title = title.charAt(0).toUpperCase() + title.slice(1);
+  return place ? `${title} @ ${place}` : title;
 };
 
 async function mixcloudUser() {
@@ -74,7 +88,7 @@ async function main() {
     knownUrls.add(url);
     added.push({
       id,
-      title: String(cast.name).trim(),
+      title: cleanTitle(cast.name),
       artists: [OWNER_SLUG],
       alias: "",
       type: "DJ mix",

@@ -98,7 +98,6 @@ footer .wrap{padding-block:32px;display:flex;flex-wrap:wrap;gap:12px 24px;justif
 </head>
 <body>
 
-<div class="draft"><div class="wrap">MUSTAND SIRLALE · tooted, kogused ja hinnad on näidised, kuni Sirla need kinnitab</div></div>
 
 <header class="hero">
   <div class="wrap">
@@ -146,7 +145,7 @@ footer .wrap{padding-block:32px;display:flex;flex-wrap:wrap;gap:12px 24px;justif
     <div class="head">
       <div class="label">Eeltellimus · Kunstnikusari 01</div>
       <h2>Vali oma tükk.</h2>
-      <p>Disain avalikustatakse liikmetele. Allolev on näidis, et näeks, kuidas eeltellimus töötab.</p>
+      <p>Disain avalikustatakse liikmetele. Vali juba praegu suurus ja kogus, et su ese oleks broneeritud.</p>
     </div>
     <div class="products" id="products"></div>
   </div></section>
@@ -191,9 +190,9 @@ footer .wrap{padding-block:32px;display:flex;flex-wrap:wrap;gap:12px 24px;justif
 
 <script>
 const PRODUCTS=[
-  {id:"tee",name:"Särk · Sari 01",type:"Trükitud T-särk",run:"Näidis: 50 tk",sizes:["XS","S","M","L","XL","XXL"],seed:3},
-  {id:"hoodie",name:"Kapuuts · Sari 01",type:"Trükitud kapuutsiga pusa",run:"Näidis: 30 tk",sizes:["S","M","L","XL","XXL"],seed:7},
-  {id:"print",name:"Kunstiprint · Sari 01",type:"Signeeritud print, A3",run:"Näidis: 25 tk",sizes:["A3"],seed:11}
+  {id:"tee",name:"Särk · Sari 01",type:"Trükitud T-särk",run:"Piiratud kogus",sizes:["XS","S","M","L","XL","XXL"],seed:3},
+  {id:"hoodie",name:"Kapuuts · Sari 01",type:"Trükitud kapuutsiga pusa",run:"Piiratud kogus",sizes:["S","M","L","XL","XXL"],seed:7},
+  {id:"print",name:"Kunstiprint · Sari 01",type:"Signeeritud print, A3",run:"Piiratud kogus",sizes:["A3"],seed:11}
 ];
 const cart={};
 const el=(t,a={},...k)=>{const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==="text")e.textContent=v;else e.setAttribute(n,v)}k.forEach(c=>e.append(c));return e};

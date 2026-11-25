@@ -775,8 +775,8 @@ function unleashButton(artist: Artist): string {
     : `<a class="btn uv" href="${escapeHtml(contactHref(artist))}">${escapeHtml(copy.profile.unleashTrack)}</a>`;
 }
 
-function workSection(title: string, releasesForSection: Release[], emptyMessage: string, showArtists = false): string {
-  return `<section class="stack"><h3 class="crate accent-label"><span>${escapeHtml(title)}</span><span>${releasesForSection.length}</span></h3><div class="list">${releasesForSection.map((release) => releaseRow(release, showArtists)).join("") || `<div class="empty">${escapeHtml(emptyMessage)}</div>`}</div></section>`;
+function workSection(title: string, releasesForSection: Release[], emptyMessage: string, showArtists = false, total = releasesForSection.length): string {
+  return `<section class="stack"><h3 class="crate accent-label"><span>${escapeHtml(title)}</span><span>${total}</span></h3><div class="list">${releasesForSection.map((release) => releaseRow(release, showArtists)).join("") || `<div class="empty">${escapeHtml(emptyMessage)}</div>`}</div></section>`;
 }
 
 function profile(artist: Artist): string {
@@ -803,7 +803,7 @@ function profile(artist: Artist): string {
     [copy.profile.lookingFor, copy.profile.lookingForSubtitle, artist.looking_for],
     [copy.profile.createsTitle, copy.profile.createsSubtitle, artist.creates],
   ] as const;
-  return `<div class="stack" style="gap:24px"><a class="back" href="#artists">${escapeHtml(copy.profile.back)}</a>
+  return `<div class="stack" style="gap:24px">${artist.publishing_only ? `<a class="back" href="#publishing">${escapeHtml(copy.profile.backPublishing)}</a>` : `<a class="back" href="#artists">${escapeHtml(copy.profile.back)}</a>`}
     <section class="hero">
       ${portraitMarkup}
       <div class="hero-txt"><div class="roles">${(artist.roles ?? []).map((role) => `<span class="role">${escapeHtml(role)}</span>`).join("")}</div>
@@ -1121,11 +1121,12 @@ async function channelView(): Promise<string> {
     ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title).replace(/@/g, "@<wbr>")}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.browseOldRender)}</a></div></div></section>`
     : `<div class="empty">${escapeHtml(copy.profile.noMusic)}</div>`;
   const newest = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).slice(0, 4);
+  const totalOf = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).length;
   const openCalls = (await loadCalls()).filter((call) => (call.status ?? "").toLowerCase() === "open");
   const callsMarkup = openCalls.map((call) => callCard(call, [], false, true)).join("");
   const aboutStrip = `<section class="about-strip"><p>${escapeHtml(copy.about.strip)}</p><a class="btn uv" href="#about">${escapeHtml(copy.about.stripLink)}</a></section>`;
   return `${intro}${aboutStrip}<div class="stack channel-content">${latestPlayer}
-    <div class="stack home-works">${workSection(copy.channel.djSets, newest("dj"), copy.profile.nothingYet)}${workSection(copy.channel.productions, newest("production"), copy.profile.nothingYet)}${workSection(copy.channel.unleashed, newest("unleashed"), copy.profile.firstUnleash, true)}</div>
+    <div class="stack home-works">${workSection(copy.channel.djSets, newest("dj"), copy.profile.nothingYet, false, totalOf("dj"))}${workSection(copy.channel.productions, newest("production"), copy.profile.nothingYet, false, totalOf("production"))}${workSection(copy.channel.unleashed, newest("unleashed"), copy.profile.firstUnleash, true, totalOf("unleashed"))}</div>
     <section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.openCalls)}</span><a href="#collab">${escapeHtml(copy.collab.openAll)}</a></h3><div class="cards">${callsMarkup || `<div class="empty">${escapeHtml(copy.collab.empty)}</div>`}</div></section>
     ${subscriberForm()}
     <p class="note channel-meaning">${escapeHtml(copy.channel.meaning)} <a href="#artist-bonhomme">${escapeHtml(copy.channel.readProfile)}</a></p>
@@ -2222,7 +2223,8 @@ function setSection(section: SiteSection): void {
 async function render(): Promise<void> {
   document.querySelector("#auth-callback-message")?.remove();
   const route = routeName();
-  setSection(route.view === "publishing" ? "publishing" : route.view === "cofounder" ? "cofounder" : "platform");
+  const publishingAuthor = route.view === "artist" && artists.some((artist) => artist.slug === route.arg && artist.publishing_only);
+  setSection(route.view === "publishing" || publishingAuthor ? "publishing" : route.view === "cofounder" ? "cofounder" : "platform");
   document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((link) => {
     const target = route.view === "artist" ? "artists" : route.view === "room" ? "studio" : route.view;
     link.setAttribute("aria-current", link.getAttribute("href") === `#${target}` ? "page" : "false");
