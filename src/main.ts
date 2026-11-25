@@ -425,6 +425,7 @@ function initialiseShell(): void {
       publishing: copy.brand.footerPublishing,
       platform: copy.brand.footerPlatform,
       cofounder: copy.brand.footerCofounder,
+      ass: copy.brand.footerAss,
     };
     footerLinks.querySelectorAll<HTMLAnchorElement>("a[data-foot]").forEach((link) => {
       link.textContent = footerLabels[link.dataset.foot ?? ""] ?? "";
