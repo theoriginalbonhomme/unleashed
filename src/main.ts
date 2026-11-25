@@ -1116,7 +1116,7 @@ async function channelView(): Promise<string> {
   if (!artist) return `<div class="empty">${escapeHtml(copy.profile.noProfile)}</div>`;
   const latest = releases.find((release) => /dj mix|dj set|live set|track/i.test(release.type) && Boolean(embed(release.url ?? "")));
   const latestPlayer = latest
-    ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title)}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.browseOldRender)}</a></div></div></section>`
+    ? `<section class="stack"><h3 class="crate"><span>${escapeHtml(copy.channel.latestWork)}</span><span>${escapeHtml(latest.date ?? "")}</span></h3><div class="feature-player"><div class="feature-embed">${embed(latest.url ?? "")}</div><div class="feature-copy"><b>${escapeHtml(latest.title).replace(/@/g, "@<wbr>")}</b><div class="m">${credits(latest)}${latest.place ? ` · ${escapeHtml(latest.place)}` : ""}</div><a class="btn uv" href="${escapeHtml(contributionHref())}">${escapeHtml(copy.channel.browseOldRender)}</a></div></div></section>`
     : `<div class="empty">${escapeHtml(copy.profile.noMusic)}</div>`;
   const newest = (group: "dj" | "production" | "unleashed") => releases.filter((release) => workGroup(release) === group).slice(0, 4);
   const openCalls = (await loadCalls()).filter((call) => (call.status ?? "").toLowerCase() === "open");
