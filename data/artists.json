@@ -44,20 +44,5 @@
     ],
     "wordmark": "img/bonhomme-wordmark.svg",
     "meaning": "Bonhomme: old French for “good man”"
-  },
-  {
-    "slug": "kati-murutar",
-    "name": "Kati Murutar",
-    "aliases": [],
-    "roles": [
-      "Writer",
-      "Teacher"
-    ],
-    "bio": "Writer, journalist and Estonian teacher. Her first novel “Naisena sündinud” and its sequel are known to Estonian readers. Recent works include the audiobooks “Viljandi Piia Gambia” (2022) and “12 inglit – konveierilt kogemusnõustajaks” (with Piia Padar, 2023).\n\nHer Estonian teaching videos are used by teachers in Estonia, Stockholm, New York, Spain and Australia. With Unleashed Publishing she publishes “Meistrite aabits”, a two-volume book for learners of Estonian aged 7 to 107, and the word game “Nii palju tähendusi!”, both for her jubilee on 21 March 2027.",
-    "links": [
-      "https://theoriginalbonhomme.github.io/nii-palju-tahendusi/"
-    ],
-    "open_to_unleash": false,
-    "publishing_only": true
   }
 ]

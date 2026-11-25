@@ -232,3 +232,4 @@ body[data-section="cofounder"] .invitation-prompt{display:none}
 .publishing-work .btn{justify-self:start}
 .portrait-initials{display:grid;place-items:center;background:var(--tq);color:var(--on);font:400 clamp(56px,12vw,120px)/1 var(--display);letter-spacing:-.03em}
 .code-row{display:flex;gap:8px;flex-wrap:wrap}.code-row input{flex:1 1 160px;font:700 18px var(--mono);letter-spacing:.12em;text-transform:uppercase}.code-row input::placeholder{text-transform:none;letter-spacing:0;font-weight:400;font-size:15px}.card-code{font-family:var(--mono);letter-spacing:.12em}
+.author .mono-line{font:700 13px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tq-text);margin:0}.author .back{font:700 12px var(--mono);letter-spacing:.06em;text-transform:uppercase}
