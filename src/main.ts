@@ -24,6 +24,8 @@ type Artist = {
   links?: string[];
   contact?: string;
   open_to_unleash?: boolean;
+  /** Shown only under Unleashed Publishing, never on the platform's Artists wall. */
+  publishing_only?: boolean;
   photo?: string;
   color?: string;
   sections?: { alias?: string; role: string; types?: string[] }[];
@@ -1492,8 +1494,10 @@ function libraryView(): string {
 }
 
 function artistsView(liveArtists: Artist[]): string {
-  const allArtists = [...artists];
+  const publishingOnly = new Set(artists.filter((artist) => artist.publishing_only).map((artist) => artist.slug));
+  const allArtists = artists.filter((artist) => !artist.publishing_only);
   [...liveArtists, ...listedArtists].forEach((candidate) => {
+    if (publishingOnly.has(candidate.slug)) return;
     if (!allArtists.some((artist) => artist.slug === candidate.slug)) allArtists.push(candidate);
   });
   const roles = [copy.artists.all, ...new Set(allArtists.flatMap((artist) => artist.roles ?? []))];

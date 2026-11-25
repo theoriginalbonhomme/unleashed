@@ -57,6 +57,7 @@
     "links": [
       "https://theoriginalbonhomme.github.io/nii-palju-tahendusi/"
     ],
-    "open_to_unleash": false
+    "open_to_unleash": false,
+    "publishing_only": true
   }
 ]
