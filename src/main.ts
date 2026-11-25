@@ -1407,6 +1407,23 @@ function wireRoom(roomId: string): void {
 
 const publishingEmail = "theoriginalbonhomme@gmail.com";
 
+function authorView(): string {
+  const p = copy.publishing;
+  const a = p.author;
+  const mailto = `mailto:${publishingEmail}?subject=${encodeURIComponent(a.contactSubject)}`;
+  return `<div class="stack about author">
+    <p><a class="back" href="#publishing">${escapeHtml(a.back)}</a></p>
+    <p class="eyebrow">${escapeHtml(a.eyebrow)}</p>
+    <h2 class="h">${escapeHtml(a.name)}</h2>
+    <p class="mono-line">${escapeHtml(a.roles)}</p>
+    ${a.bio.map((line, i) => `<p class="${i === 0 ? "intro" : "lead"}">${escapeHtml(line)}</p>`).join("")}
+    <section class="about-section"><h3 class="about-title">${escapeHtml(a.worksTitle)}</h3>
+    <div class="publishing-works">${p.caseWorks.map((work) => `<div class="publishing-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span>${work.href ? `<a class="btn solid" href="${escapeHtml(work.href)}" target="_blank" rel="noopener">${escapeHtml(work.cta)}</a>` : ""}</div>`).join("")}</div>
+    <p class="about-notice">${escapeHtml(p.caseStatus)}</p></section>
+    <p><a class="btn yellow" href="${escapeHtml(mailto)}">${escapeHtml(a.contact)}</a></p>
+  </div>`;
+}
+
 function publishingView(): string {
   const p = copy.publishing;
   const mailto = `mailto:${publishingEmail}?subject=${encodeURIComponent(p.contactSubject)}`;
@@ -1417,7 +1434,7 @@ function publishingView(): string {
   const caseStudy = section(p.caseEyebrow, p.caseTitle,
     `<p class="lead">${escapeHtml(p.caseLead)}</p>
     <div class="publishing-works">${p.caseWorks.map((work) => `<div class="publishing-work"><h4>${escapeHtml(work.title)}</h4><span>${escapeHtml(work.text)}</span>${work.href ? `<a class="btn solid" href="${escapeHtml(work.href)}" target="_blank" rel="noopener">${escapeHtml(work.cta)}</a>` : ""}</div>`).join("")}</div>
-    <p><a class="btn" href="#artist-kati-murutar">${escapeHtml(p.caseProfile)}</a></p>
+    <p><a class="btn" href="#author-${escapeHtml(p.author.slug)}">${escapeHtml(p.caseProfile)}</a></p>
     <h4 class="crate"><span>${escapeHtml(p.caseDidTitle)}</span></h4>
     <ul class="about-points">${p.caseDid.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
     <p class="about-notice">${escapeHtml(p.caseStatus)}</p>
@@ -1589,6 +1606,8 @@ function routeName(): { view: string; arg: string } {
   }
   const route = hash.slice(1) === "press" ? "publishing" : hash.slice(1);
   if (route.startsWith("room-")) return { view: "room", arg: route.slice("room-".length) };
+  if (route.startsWith("author-")) return { view: "author", arg: route.slice("author-".length) };
+  if (route === `artist-${copy.publishing.author.slug}`) return { view: "author", arg: copy.publishing.author.slug };
   return route.startsWith("artist-")
     ? { view: "artist", arg: route.slice("artist-".length) }
     : route === "curator"
@@ -2217,7 +2236,7 @@ function setSection(section: SiteSection): void {
 async function render(): Promise<void> {
   document.querySelector("#auth-callback-message")?.remove();
   const route = routeName();
-  setSection(route.view === "publishing" ? "publishing" : route.view === "cofounder" ? "cofounder" : "platform");
+  setSection(route.view === "publishing" || route.view === "author" ? "publishing" : route.view === "cofounder" ? "cofounder" : "platform");
   document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((link) => {
     const target = route.view === "artist" ? "artists" : route.view === "room" ? "studio" : route.view;
     link.setAttribute("aria-current", link.getAttribute("href") === `#${target}` ? "page" : "false");
@@ -2230,6 +2249,9 @@ async function render(): Promise<void> {
       return;
     case "publishing":
       appView.innerHTML = publishingView();
+      return;
+    case "author":
+      appView.innerHTML = route.arg === copy.publishing.author.slug ? authorView() : publishingView();
       return;
     case "cofounder":
       appView.innerHTML = cofounderView();

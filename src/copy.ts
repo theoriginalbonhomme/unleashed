@@ -419,6 +419,20 @@ export const copy = {
       { title: "Nii palju tähendusi!", text: "A card game and web app with 777 Estonian words that have more than one meaning. Built by Unleashed.", href: "https://theoriginalbonhomme.github.io/nii-palju-tahendusi/", cta: "Play the game" },
     ],
     caseProfile: "Kati Murutar's page",
+    author: {
+      slug: "kati-murutar",
+      eyebrow: "Unleashed Publishing · Author",
+      name: "Kati Murutar",
+      roles: "Writer · Journalist · Estonian teacher",
+      bio: [
+        "Writer, journalist and Estonian teacher. Her first novel “Naisena sündinud” and its sequel are known to Estonian readers. Recent works include the audiobooks “Viljandi Piia Gambia” (2022) and “12 inglit – konveierilt kogemusnõustajaks” (with Piia Padar, 2023).",
+        "Her Estonian teaching videos are used by teachers in Estonia, Stockholm, New York, Spain and Australia. With Unleashed Publishing she publishes “Meistrite aabits”, a two-volume book for learners of Estonian aged 7 to 107, and the word game “Nii palju tähendusi!”, both for her jubilee on 21 March 2027.",
+      ],
+      worksTitle: "With Unleashed Publishing",
+      back: "Back to Unleashed Publishing",
+      contact: "Write to us about Kati's books",
+      contactSubject: "Kati Murutar: Meistrite aabits and Nii palju tähendusi!",
+    },
     caseDidTitle: "What Unleashed does",
     caseDid: [
       "Runs the project, from budget to launch day",
