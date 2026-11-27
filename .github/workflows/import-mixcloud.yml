@@ -1,0 +1,84 @@
+name: Import Mixcloud uploads
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: mixcloud-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test Mixcloud importer
+        run: node --test scripts/import-mixcloud.test.mjs
+      - name: Prepare review branch
+        id: branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="automation/mixcloud-import"
+          pull_number="$(gh pr list --base main --head "$GITHUB_REPOSITORY_OWNER:$branch" --state open --json number --jq '.[0].number // empty')"
+          git fetch origin main
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            git fetch origin "$branch"
+            echo "remote_branch=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "remote_branch=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$pull_number" ]; then
+            echo "pull_number=$pull_number" >> "$GITHUB_OUTPUT"
+          else
+            echo "pull_number=" >> "$GITHUB_OUTPUT"
+          fi
+          git checkout -B "$branch" origin/main
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+      - name: Import new Mixcloud uploads
+        run: node scripts/import-mixcloud.mjs
+      - name: Create or update review pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_NUMBER: ${{ steps.branch.outputs.pull_number }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          REMOTE_BRANCH: ${{ steps.branch.outputs.remote_branch }}
+        run: |
+          if ! git diff --quiet -- data/releases.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/releases.json
+            git commit -m "Add new Mixcloud uploads"
+            if [ "$REMOTE_BRANCH" = "true" ]; then
+              git push --force-with-lease origin "$BRANCH"
+            else
+              git push --set-upstream origin "$BRANCH"
+            fi
+          fi
+
+          if [ -n "$PULL_NUMBER" ] && ! git diff --quiet origin/main...HEAD; then
+            gh pr edit "$PULL_NUMBER" \
+              --title "Add new Mixcloud uploads" \
+              --body "Adds uploads from the BONHOMME Mixcloud profile that are not yet in \`data/releases.json\`. Please review the titles, dates, lengths, and places before merging."
+          elif [ -n "$PULL_NUMBER" ]; then
+            gh pr close "$PULL_NUMBER" --comment "All uploads from the current Mixcloud listing are already in main."
+          elif ! git diff --quiet -- data/releases.json; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Add new Mixcloud uploads" \
+              --body "Adds uploads from the BONHOMME Mixcloud profile that are not yet in \`data/releases.json\`. Please review the titles, dates, lengths, and places before merging."
+          else
+            echo "No new Mixcloud uploads to propose."
+          fi
